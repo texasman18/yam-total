@@ -842,6 +842,27 @@ function ensureGoogleLang(cb){
   document.head.appendChild(s);
 }
 
+// ── 한국 모드용 Google Places 보장 ─────────────────────────
+//  한국(카카오 지도)에서도 Google 개방화장실 데이터를 쓰려면 Google이 로드돼 있어야 한다.
+//  이미 로드돼 있으면(en/ko 무관) 그대로 재사용하고, 없으면 en·KR로 백그라운드 로드한다.
+//  결과 일관성은 searchByText의 locationBias(현재 좌표)로 확보한다(로드된 region 무관).
+function ensureGooglePlacesReady(cb){
+  if(window.google&&window.google.maps){ cb(); return; }
+  if(window.__yamPlacesLoading){
+    var iv=setInterval(function(){ if(window.google&&window.google.maps){ clearInterval(iv); cb(); } },100);
+    setTimeout(function(){ clearInterval(iv); cb(); },6000);
+    return;
+  }
+  window.__yamPlacesLoading=true;
+  // language=ko로 로드 → 한국↔일본/대만(모두 ko) 전환 시 리로드 불필요(매끄러운 카드 진입).
+  // 영어 토글만 en 필요라 그때 1회 리로드(ensureGoogleLang 기존 로직).
+  window.__yamGPlacesReady=function(){ googleLoadedLang=googleLoadedLang||'ko'; cb(); };
+  var s=document.createElement('script');
+  s.src='https://maps.googleapis.com/maps/api/js?key=AIzaSyAplYXuzjhjgi-f-M_zR3qahJ-KehNhD1g&libraries=places&language=ko&region=KR&callback=__yamGPlacesReady';
+  s.async=true; s.defer=true; s.onerror=function(){ cb(); };
+  document.head.appendChild(s);
+}
+
 // ── setCountry: 모든 국가 전환의 단일 수렴점 ──────────────
 function setCountry(cc,opts){
   if(curCountry===cc) return;
@@ -1231,6 +1252,7 @@ function searchNearKR(lat,lng){
   }
 
   function addGooglePlaces(cb){
+    ensureGooglePlacesReady(function(){
     if(!window.google||!window.google.maps){cb();return;}
     google.maps.importLibrary('places').then(function(lib){
       var Place=lib.Place;
@@ -1241,7 +1263,8 @@ function searchNearKR(lat,lng){
         Place.searchByText({
           fields:['displayName','formattedAddress','location'],
           textQuery:q.trim(),
-          language:'ko'
+          language:'ko',
+          locationBias:{center:{lat:lat,lng:lng},radius:1500}
         }).then(function(res){
           (res.places||[]).forEach(function(place){
             if(!place.location)return;
@@ -1259,6 +1282,7 @@ function searchNearKR(lat,lng){
         }).catch(function(){done++;if(done>=queries.length)cb();});
       });
     }).catch(function(){cb();});
+    }); // ensureGooglePlacesReady
   }
 
   var searches=[
@@ -1282,10 +1306,9 @@ function searchNearKR(lat,lng){
       done++;
       if(done>=total){
         addPublic();
-        // KR 한국어 모드는 카카오+행안부 공공데이터(정본)만 사용한다.
-        // 구글 Places를 섞으면 '일본·대만을 다녀와 구글이 로드된 세션'과
-        // '처음부터 한국인 세션'의 결과가 달라져(같은 위치 다른 개수) 일관성이 깨진다.
-        finishSearch();
+        // 한국도 Google 개방화장실 데이터를 포함한다(ensureGooglePlacesReady로 항상 로드).
+        // 세션 이력에 따른 결과 차이는 searchByText locationBias(현재 좌표)로 제거.
+        addGooglePlaces(function(){ finishSearch(); });
       }
     },opt);
   });
