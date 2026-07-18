@@ -30,7 +30,7 @@
   </script>
   <style>
     :root{
-      --safe-top:54px;
+      --safe-top:max(env(safe-area-inset-top, 0px), 14px);
       --g:#00754A; --gd:#1E3932;
       --land-bg:linear-gradient(160deg,#EAF6F0 0%,#F7FBF9 45%,#EFF7F3 100%);
       --glass-bg:rgba(255,255,255,0.62); --glass-bd:rgba(255,255,255,0.85);
@@ -48,16 +48,16 @@
 
     /* ══════════════ 랜딩 (기존 앱 디자인 + 여행 카드) ══════════════ */
     #landing{position:fixed;inset:0;z-index:999;background:linear-gradient(160deg,#f2f0eb 0%,#eaf0ea 50%,#ede8df 100%);
-      display:flex;flex-direction:column;align-items:center;justify-content:center;
-      overflow-y:auto;padding:calc(var(--safe-top) + 10px) 20px calc(env(safe-area-inset-bottom,0px) + 20px);
+      display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+      overflow-y:auto;padding:calc(var(--safe-top) + 18px) 20px calc(env(safe-area-inset-bottom,0px) + 20px);
       transition:opacity 0.5s;}
     #landing.hide{opacity:0;pointer-events:none;}
     .grid{position:absolute;inset:0;background-image:linear-gradient(#006241 1px,transparent 1px),linear-gradient(90deg,#006241 1px,transparent 1px);background-size:40px 40px;opacity:0.03;pointer-events:none;}
     .orb{position:absolute;border-radius:50%;filter:blur(70px);opacity:0.35;pointer-events:none;}
     .orb1{width:260px;height:260px;background:#00754A;top:5%;left:-80px;}
     .orb2{width:320px;height:320px;background:#1E3932;bottom:8%;right:-100px;}
-    .landing-inner{position:relative;z-index:1;text-align:center;width:100%;max-width:400px;margin:auto 0 0;}
-    .logo-wrap{width:88px;height:88px;border-radius:22px;overflow:hidden;margin:0 auto 18px;box-shadow:0 12px 30px rgba(0,117,74,0.35);}
+    .landing-inner{position:relative;z-index:1;text-align:center;width:100%;max-width:400px;margin:clamp(6px,3vh,32px) auto 0;}
+    .logo-wrap{width:82px;height:82px;border-radius:22px;overflow:hidden;margin:0 auto 16px;box-shadow:0 12px 30px rgba(0,117,74,0.35);}
     .logo-wrap img{width:100%;height:100%;object-fit:cover;}
     .tagline{color:#006241;font-weight:800;font-size:11px;letter-spacing:0.22em;margin-bottom:14px;text-transform:uppercase;}
     .landing-title{font-size:34px;font-weight:700;line-height:1.25;margin-bottom:20px;color:#006241;letter-spacing:-0.01em;}
@@ -111,12 +111,14 @@
     #mapscreen.show{visibility:visible;}
     #kakaoMap{position:absolute;inset:0;width:100%!important;height:100%!important;}
 
-    .topbar{position:absolute;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;gap:10px;padding:calc(var(--safe-top) + 12px) 14px 12px;background:linear-gradient(to bottom,rgba(242,240,235,0.97) 70%,transparent);pointer-events:none;}
+    .topbar{position:absolute;top:0;left:0;right:0;z-index:100;display:flex;flex-wrap:nowrap;align-items:center;gap:8px;padding:calc(var(--safe-top) + 10px) 12px 12px;background:linear-gradient(to bottom,rgba(242,240,235,0.97) 76%,transparent);pointer-events:none;}
     .topbar>*{pointer-events:auto;}
     .logo-sm{width:38px;height:38px;border-radius:12px;overflow:hidden;flex-shrink:0;box-shadow:0 3px 10px rgba(0,0,0,0.12);}
     .logo-sm img{width:100%;height:100%;object-fit:cover;}
-    .search-box{flex:1;background:white;border-radius:50px;padding:10px 16px;display:flex;align-items:center;gap:8px;box-shadow:0 1px 3px rgba(0,0,0,0.1),0 2px 2px rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.06);cursor:pointer;}
+    .search-box{flex:1;min-width:0;background:white;border-radius:50px;padding:10px 15px;display:flex;align-items:center;gap:8px;box-shadow:0 1px 3px rgba(0,0,0,0.1),0 2px 2px rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.06);cursor:pointer;height:44px;}
     .search-box span{color:rgba(0,0,0,0.4);font-size:14px;}
+    .search-box span:first-child{flex-shrink:0;}
+    #srch-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
 
     .kr-return{display:none;background:white;border:1.5px solid rgba(0,98,65,0.2);border-radius:50px;padding:0 14px;font-size:13px;font-weight:700;color:#006241;cursor:pointer;white-space:nowrap;font-family:inherit;box-shadow:0 1px 3px rgba(0,0,0,0.1);min-height:44px;align-items:center;flex-shrink:0;}
     body.abroad .kr-return{display:flex;}
@@ -384,7 +386,7 @@ var LANG={
     title:'일본 여행 중<br><span class="hi">급할 때</span><br>얌이 찾아드려요',
     titleSub:'일본 전역 화장실을 한국어로 찾아드려요',
     startBtn:'📍 일본에서 화장실 찾기',
-    searchHint:'도시·역·명소 검색 (예: 난바, 신주쿠)',
+    searchHint:'역·지명 검색 (예: 신주쿠)',
     filterAll:'전체', filterPub:'🚻 공중화장실', filterOpn:'🏢 개방·상업시설',
     loading:'화장실 검색 중...',
     toastLoc:'📍 내 위치 확인 중...',
@@ -410,7 +412,7 @@ var LANG={
     title:'대만 여행 중<br><span class="hi">급할 때</span><br>얌이 찾아드려요',
     titleSub:'대만 전역 화장실을 한국어로 찾아드려요',
     startBtn:'📍 대만에서 화장실 찾기',
-    searchHint:'도시·역·명소 (예: 시먼딩, 지우펀)',
+    searchHint:'역·지명 검색 (예: 시먼딩)',
     filterAll:'전체', filterPub:'🚻 공중화장실', filterOpn:'🏢 개방·상업시설',
     loading:'화장실 검색 중...',
     toastLoc:'📍 내 위치 확인 중...',
