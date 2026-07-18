@@ -1,4 +1,4 @@
-const CACHE_NAME = 'yam-total-v2'; // KR/JP/TW 통합 앱 — 캐시 네임스페이스 분리(기존 yam-cache-v3와 충돌 없음)
+const CACHE_NAME = 'yam-total-v3'; // KR/JP/TW 통합 앱 — 캐시 네임스페이스 분리(기존 yam-cache-v3와 충돌 없음)
 const urlsToCache = [
   '/',
   '/index.html',
