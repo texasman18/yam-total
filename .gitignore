@@ -1,0 +1,5 @@
+.DS_Store
+pipeline/**/__pycache__/
+pipeline/**/.venv/
+pipeline/**/raw_*.json
+pipeline/**/fetch_log.txt
