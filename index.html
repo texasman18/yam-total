@@ -1084,6 +1084,9 @@ function handleGps(lat,lng){
   if(curCountry!==before) return; // 국가 전환됨 — setCountry→reinitMap(goMyLoc) 체인이 이미 위치 반영
   if(curCountry==='kr'){
     myLat=lat; myLng=lng;
+    // 내 위치로 지도 이동 (카카오=level, 구글=zoom) — 이게 빠져 있어 핀을 눌러도 안 움직였음
+    if(isGoogleMap()){ map.setCenter({lat:lat,lng:lng}); map.setZoom(18); }
+    else { map.setCenter(new kakao.maps.LatLng(lat,lng)); map.setLevel(3); }
     placeMyLocMarker(lat,lng);
     updateLoc(myLat,myLng);
     searchNear(myLat,myLng);
