@@ -1292,8 +1292,11 @@ function searchNearKR(lat,lng){
   ];
   var total=searches.length, done=0;
   if(curLang==='en'){
-    addPublic();
-    addGooglePlaces(function(){ finishSearch(); });
+    // 공공데이터(toilets.json)가 아직 안 실렸으면(예: 대만/일본으로 먼저 진입한 세션) 여기서 보장 로드
+    loadPublicData(function(){
+      addPublic();
+      addGooglePlaces(function(){ finishSearch(); });
+    });
     return;
   }
 
@@ -1305,10 +1308,13 @@ function searchNearKR(lat,lng){
       if(st===kakao.maps.services.Status.OK) data.forEach(function(p){addKakao(p,s.t);});
       done++;
       if(done>=total){
-        addPublic();
-        // 한국도 Google 개방화장실 데이터를 포함한다(ensureGooglePlacesReady로 항상 로드).
-        // 세션 이력에 따른 결과 차이는 searchByText locationBias(현재 좌표)로 제거.
-        addGooglePlaces(function(){ finishSearch(); });
+        // 공공데이터가 아직 안 실렸으면(대만/일본 먼저 진입 후 한국 복귀 등) 보장 로드 후 합친다.
+        loadPublicData(function(){
+          addPublic();
+          // 한국도 Google 개방화장실 데이터를 포함한다(ensureGooglePlacesReady로 항상 로드).
+          // 세션 이력에 따른 결과 차이는 searchByText locationBias(현재 좌표)로 제거.
+          addGooglePlaces(function(){ finishSearch(); });
+        });
       }
     },opt);
   });
