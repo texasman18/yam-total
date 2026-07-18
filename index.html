@@ -1282,7 +1282,10 @@ function searchNearKR(lat,lng){
       done++;
       if(done>=total){
         addPublic();
-        addGooglePlaces(function(){ finishSearch(); });
+        // KR 한국어 모드는 카카오+행안부 공공데이터(정본)만 사용한다.
+        // 구글 Places를 섞으면 '일본·대만을 다녀와 구글이 로드된 세션'과
+        // '처음부터 한국인 세션'의 결과가 달라져(같은 위치 다른 개수) 일관성이 깨진다.
+        finishSearch();
       }
     },opt);
   });
