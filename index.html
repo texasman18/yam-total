@@ -20,13 +20,12 @@
   <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=f59ba786d95984d04a6269d4e1e86bf3&libraries=services,geocoder"></script>
   <!-- Google Maps SDK는 동적 로더로 로드한다 (ensureGoogleLang) — 정적 태그 없음 -->
   <script>
-    // ── 부트스트랩: 국가/언어 초기값 (URL > localStorage > 기본값) ──
+    // ── 부트스트랩: 초기 화면은 항상 한국 랜딩 (요청 #2) ──
+    //  · 랜딩은 언제나 KR — 여행지(일본/대만)는 카드 탭 또는 GPS 자동 전환으로만 진입
+    //  · ?country=jp|tw 딥링크만 예외적으로 해외 모드로 직행 (테스트·QR용)
     var _qs=new URLSearchParams(location.search);
     var _uc=_qs.get('country');
-    var curCountry=(_uc==='jp'||_uc==='tw')?_uc:(function(){
-      var s=localStorage.getItem('yam_country');
-      return (s==='jp'||s==='tw')?s:'kr';
-    })();
+    var curCountry=(_uc==='jp'||_uc==='tw')?_uc:'kr';
     var curLang=(curCountry==='kr')?(_qs.get('lang')||'ko'):'ko';
   </script>
   <style>
@@ -47,28 +46,55 @@
     *{margin:0;padding:0;box-sizing:border-box;}
     body{font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:#f2f0eb;color:rgba(0,0,0,0.87);overflow:hidden;}
 
-    /* ══════════════ 랜딩 (리뉴얼) ══════════════ */
-    #landing{position:fixed;inset:0;z-index:999;background:var(--land-bg);color:var(--txt);
-      padding:calc(var(--safe-top) + 14px) 22px calc(env(safe-area-inset-bottom,0px) + 22px);
-      display:flex;flex-direction:column;overflow-y:auto;transition:opacity 0.5s;}
+    /* ══════════════ 랜딩 (기존 앱 디자인 + 여행 카드) ══════════════ */
+    #landing{position:fixed;inset:0;z-index:999;background:linear-gradient(160deg,#f2f0eb 0%,#eaf0ea 50%,#ede8df 100%);
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      overflow-y:auto;padding:calc(var(--safe-top) + 10px) 20px calc(env(safe-area-inset-bottom,0px) + 20px);
+      transition:opacity 0.5s;}
     #landing.hide{opacity:0;pointer-events:none;}
+    .grid{position:absolute;inset:0;background-image:linear-gradient(#006241 1px,transparent 1px),linear-gradient(90deg,#006241 1px,transparent 1px);background-size:40px 40px;opacity:0.03;pointer-events:none;}
+    .orb{position:absolute;border-radius:50%;filter:blur(70px);opacity:0.35;pointer-events:none;}
+    .orb1{width:260px;height:260px;background:#00754A;top:5%;left:-80px;}
+    .orb2{width:320px;height:320px;background:#1E3932;bottom:8%;right:-100px;}
+    .landing-inner{position:relative;z-index:1;text-align:center;width:100%;max-width:400px;margin:auto 0 0;}
+    .logo-wrap{width:88px;height:88px;border-radius:22px;overflow:hidden;margin:0 auto 18px;box-shadow:0 12px 30px rgba(0,117,74,0.35);}
+    .logo-wrap img{width:100%;height:100%;object-fit:cover;}
+    .tagline{color:#006241;font-weight:800;font-size:11px;letter-spacing:0.22em;margin-bottom:14px;text-transform:uppercase;}
+    .landing-title{font-size:34px;font-weight:700;line-height:1.25;margin-bottom:20px;color:#006241;letter-spacing:-0.01em;}
+    .landing-title .hi{color:#00754A;}
+    .lang-btns{display:flex;gap:10px;justify-content:center;margin-bottom:18px;}
+    .lang-btn{padding:9px 22px;border-radius:50px;border:1.5px solid #00754A;background:rgba(255,255,255,0.35);color:rgba(0,0,0,0.87);font-size:13px;font-weight:700;cursor:pointer;transition:all 0.2s;font-family:inherit;min-height:40px;}
+    .lang-btn.active{background:#00754A;color:#fff;border-color:#00754A;box-shadow:0 4px 12px rgba(0,117,74,0.35);}
+    .start-btn{background:#00754A;color:white;border:none;padding:17px 0;border-radius:50px;font-size:17px;font-weight:700;width:100%;box-shadow:0 0 0.5px rgba(0,0,0,0.14),0 8px 20px rgba(0,117,74,0.35);cursor:pointer;font-family:inherit;transition:transform 0.2s;min-height:56px;}
+    .start-btn:active{transform:scale(0.96);}
 
-    .glass,.glass-pill,.land-cta{
-      background:var(--glass-bg);
-      -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
-      border:1px solid var(--glass-bd);
-      box-shadow:0 8px 28px rgba(18,36,29,0.10), inset 0 1px 0 rgba(255,255,255,0.35);}
-    @supports not (backdrop-filter:blur(1px)){ .glass,.glass-pill,.land-cta{background:rgba(255,255,255,0.94);} }
-    @media (prefers-color-scheme:dark){
-      @supports not (backdrop-filter:blur(1px)){ .glass,.glass-pill,.land-cta{background:#16261F;} }
-    }
+    /* 여행 카드 (기존 랜딩 하단에 추가 — 일본·대만 지도) */
+    .land-travel{position:relative;z-index:1;width:100%;max-width:400px;margin:22px auto 0;}
+    .land-label{font-size:12.5px;font-weight:700;color:#006241;margin-bottom:9px;text-align:center;opacity:0.85;}
+    .bento{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    .trip-card{position:relative;border-radius:18px;padding:14px 10px 11px;min-height:116px;background:#fff;
+      border:1px solid rgba(0,98,65,0.12);box-shadow:0 1px 3px rgba(0,0,0,0.08),0 4px 14px rgba(0,117,74,0.06);
+      display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
+      cursor:pointer;transition:transform .18s,box-shadow .18s;text-align:center;}
+    .trip-card:active{transform:scale(0.96);}
+    .trip-card:hover{box-shadow:0 4px 10px rgba(0,0,0,0.1),0 8px 22px rgba(0,117,74,0.12);}
+    .trip-svg{height:64px;width:auto;position:absolute;top:12px;left:50%;transform:translateX(-50%);opacity:0.95;}
+    .trip-svg path{fill:#00754A;}
+    .trip-flag{position:absolute;top:8px;right:10px;font-size:16px;}
+    .trip-label{font-size:13px;font-weight:700;color:rgba(0,0,0,0.82);line-height:1.3;}
+    .kr-card{justify-content:center;min-height:80px;}
+    .kr-card .trip-flag{position:static;font-size:26px;margin-bottom:4px;}
+    .land-hint{font-size:11.5px;color:rgba(0,0,0,0.42);margin-top:10px;text-align:center;}
+    .land-trust{margin:16px auto 2px;display:block;font-size:11.5px;color:rgba(0,0,0,0.42);
+      background:none;border:none;cursor:pointer;font-family:inherit;text-align:center;padding:6px;min-height:30px;}
+    .land-trust span[style]{text-decoration:underline;}
 
-    .land-top{display:flex;align-items:center;justify-content:space-between;}
-    .land-logo{width:40px;height:40px;border-radius:12px;overflow:hidden;box-shadow:0 3px 10px rgba(0,0,0,0.12);flex-shrink:0;}
-    .land-logo img{width:100%;height:100%;object-fit:cover;}
+    .powered{position:relative;z-index:1;font-size:12px;color:rgba(0,0,0,0.38);text-align:center;margin-top:14px;}
+    .contact{position:relative;z-index:1;font-size:12px;color:#006241;font-weight:600;opacity:0.8;text-align:center;margin-top:4px;}
+    .contact a{color:inherit;}
 
-    /* 언어 토글 스위치 (KR 모드에서만 노출) */
-    .lang-toggle{display:flex;align-items:center;gap:5px;cursor:pointer;flex-shrink:0;user-select:none;min-height:32px;}
+    /* 언어 토글 스위치 (지도 화면 상단바 — KR 모드 전용) */
+    .lang-toggle{display:flex;align-items:center;gap:5px;cursor:pointer;flex-shrink:0;user-select:none;min-height:44px;}
     .lt-ko,.lt-en{font-size:16px;transition:opacity 0.25s;line-height:1;opacity:0.45;}
     .lt-ko.active,.lt-en.active{opacity:1;}
     .lt-track{width:36px;height:20px;background:#d4e9e2;border-radius:10px;position:relative;transition:background 0.25s;flex-shrink:0;}
@@ -76,42 +102,8 @@
     .lt-thumb{position:absolute;top:2px;left:2px;width:16px;height:16px;background:white;border-radius:50%;transition:transform 0.25s cubic-bezier(0.4,0,0.2,1);box-shadow:0 1px 3px rgba(0,0,0,0.2);}
     .lt-track.en .lt-thumb{transform:translateX(16px);}
 
-    .land-hook{font-size:clamp(38px,10.5vw,54px);line-height:1.1;font-weight:800;
-      letter-spacing:-0.03em;margin:8vh 0 10px;opacity:0;transform:translateY(8px);
-      animation:landUp 0.22s ease-out 0.05s forwards;}
-    .land-hook .hi{color:var(--g);}
-    .land-sub{font-size:15.5px;color:var(--txt2);margin-bottom:auto;line-height:1.5;
-      opacity:0;transform:translateY(8px);animation:landUp 0.22s ease-out 0.12s forwards;}
-    @keyframes landUp{to{opacity:1;transform:translateY(0);}}
-
-    .land-cta{width:100%;min-height:56px;border-radius:20px;font-size:17px;font-weight:700;
-      color:#fff;background:linear-gradient(135deg,#00915C,var(--g));cursor:pointer;border:none;
-      transition:transform .18s;margin-top:22px;font-family:inherit;
-      box-shadow:0 10px 24px rgba(0,117,74,0.32), inset 0 1px 0 rgba(255,255,255,0.25);}
-    .land-cta:active{transform:scale(0.97);}
-
-    .land-travel{margin-top:26px;}
-    .land-label{font-size:13px;font-weight:700;color:var(--txt2);margin-bottom:10px;}
-    .bento{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-    .trip-card{position:relative;border-radius:18px;padding:16px 10px 12px;min-height:120px;
-      display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
-      cursor:pointer;transition:transform .18s;text-align:center;}
-    .trip-card:active{transform:scale(0.96);}
-    .trip-svg{height:68px;width:auto;position:absolute;top:12px;left:50%;transform:translateX(-50%);opacity:0.92;}
-    .trip-svg path{fill:var(--g);}
-    .trip-flag{position:absolute;top:8px;right:10px;font-size:15px;}
-    .trip-label{font-size:13px;font-weight:700;color:var(--txt);line-height:1.3;}
-    .kr-card{justify-content:center;min-height:80px;}
-    .kr-card .trip-flag{position:static;font-size:26px;margin-bottom:4px;}
-    .land-hint{font-size:12px;color:var(--txt2);margin-top:10px;text-align:center;}
-
-    .land-trust{margin:18px auto 4px;display:block;font-size:12px;color:var(--txt2);
-      background:none;border:none;cursor:pointer;font-family:inherit;text-align:center;padding:8px;min-height:32px;}
-    .land-powered{text-align:center;font-size:11px;color:var(--txt2);opacity:0.7;margin-top:2px;}
-    .land-powered a{color:inherit;}
-
     @media (prefers-reduced-motion:reduce){
-      #landing *{transition:none!important;animation:none!important;opacity:1!important;transform:none!important;}
+      #landing *{transition:none!important;animation:none!important;}
     }
 
     /* ══════════════ 지도화면 (KR/JP/TW 공통) ══════════════ */
@@ -128,7 +120,8 @@
 
     .kr-return{display:none;background:white;border:1.5px solid rgba(0,98,65,0.2);border-radius:50px;padding:0 14px;font-size:13px;font-weight:700;color:#006241;cursor:pointer;white-space:nowrap;font-family:inherit;box-shadow:0 1px 3px rgba(0,0,0,0.1);min-height:44px;align-items:center;flex-shrink:0;}
     body.abroad .kr-return{display:flex;}
-    body.abroad .lang-toggle{display:none!important;}
+    /* 해외(JP/TW) 모드: 한/영 토글은 숨기지 않고 비활성화(회색) — 요청 #5 */
+    body.abroad .lang-toggle{opacity:0.32;pointer-events:none;filter:grayscale(1);cursor:default;}
 
     .filters{position:absolute;top:calc(var(--safe-top) + 66px);left:0;right:0;z-index:100;display:flex;gap:8px;padding:0 14px;overflow-x:auto;scrollbar-width:none;}
     .filters::-webkit-scrollbar{display:none;}
@@ -239,30 +232,31 @@
 </head>
 <body>
 
-<!-- 랜딩 (리뉴얼) -->
+<!-- 랜딩 (기존 앱 디자인 그대로 + 하단 여행 카드) -->
 <div id="landing">
-  <div class="land-top">
-    <div class="land-logo"><img src="icon.png" alt="얌" onerror="this.parentElement.style.background='linear-gradient(135deg,#00754A,#1E3932)'"></div>
-    <div class="lang-toggle" onclick="toggleLang()" title="언어 변경">
-      <span class="lt-ko">🇰🇷</span>
-      <div class="lt-track"><div class="lt-thumb"></div></div>
-      <span class="lt-en">🇬🇧</span>
+  <div class="grid"></div>
+  <div class="orb orb1"></div>
+  <div class="orb orb2"></div>
+  <div class="landing-inner">
+    <div class="logo-wrap"><img src="icon.png" alt="얌" onerror="this.parentElement.style.background='linear-gradient(135deg,#00754A,#1E3932)'"></div>
+    <div class="tagline">REAL-TIME TOILET FINDER</div>
+    <h1 class="landing-title" id="l-title">급할 때<br><span class="hi">가장 먼저</span><br>찾는 앱</h1>
+    <div class="lang-btns">
+      <button class="lang-btn active" id="lang-ko" onclick="setLang('ko')">🇰🇷 한국어</button>
+      <button class="lang-btn" id="lang-en" onclick="setLang('en')">🇺🇸 English</button>
     </div>
+    <button class="start-btn" id="start-btn" onclick="startApp()">📍 내 주변 화장실 찾기</button>
   </div>
-
-  <h1 class="land-hook" id="land-hook">급할 때,<br><span class="hi">3초.</span></h1>
-  <p class="land-sub" id="land-sub">내 주변 화장실, 얌이 가장 먼저 찾아드려요</p>
-
-  <button class="land-cta" id="land-cta" onclick="startApp()">📍 내 주변 화장실 찾기</button>
 
   <div class="land-travel" id="land-travel">
-    <div class="land-label" id="land-travel-label">여행 중이세요?</div>
+    <div class="land-label" id="land-travel-label">✈️ 해외 여행 중이신가요?</div>
     <div class="bento" id="country-cards"></div>
-    <div class="land-hint" id="land-hint">✨ 여행지에 도착하면 자동으로 전환돼요</div>
+    <div class="land-hint" id="land-hint">지도를 누르면 해당 나라 화장실로 이동해요</div>
+    <button class="land-trust" onclick="openSources()">🚻 78,000+ 화장실 데이터 · 출처 <span style="text-decoration:underline">ⓘ</span></button>
   </div>
 
-  <button class="land-trust" onclick="openSources()">🚻 <span id="trust-cnt">78,000</span>+ <span id="trust-label">화장실 데이터</span> · 출처 <span style="text-decoration:underline">ⓘ</span></button>
-  <div class="land-powered">Powered by 테크셀 · <a href="mailto:texasman@naver.com">문의</a></div>
+  <div class="powered">Powered by 테크셀</div>
+  <div class="contact">문의 : <a href="mailto:texasman@naver.com">texasman@naver.com</a></div>
 </div>
 
 <!-- 지도화면 -->
@@ -329,7 +323,7 @@
 // ═══════════════════════════════════════════════════════════
 var LANG={
   ko:{
-    title:'급할 때,<br><span class="hi">3초.</span>',
+    title:'급할 때<br><span class="hi">가장 먼저</span><br>찾는 앱',
     titleSub:'내 주변 화장실, 얌이 가장 먼저 찾아드려요',
     trustLine:'화장실 데이터',
     startBtn:'📍 내 주변 화장실 찾기',
@@ -358,7 +352,7 @@ var LANG={
     qp:['강남역','홍대입구','명동','이태원','신촌','잠실','여의도','종로','건대입구','신림'],
   },
   en:{
-    title:'When it\'s urgent,<br><span class="hi">3 seconds.</span>',
+    title:'Find Restrooms<br><span class="hi">Near You</span><br>Instantly',
     titleSub:'Find the nearest restroom, instantly',
     trustLine:'restroom locations',
     startBtn:'📍 Find Nearby Restrooms',
@@ -906,16 +900,17 @@ var TRIP_SVG={
      '<circle cx="61" cy="32" r="7" fill="#FF5A45" stroke="#fff" stroke-width="3.2"/>'
 };
 function renderLanding(){
-  var hook=document.getElementById('land-hook'), sub=document.getElementById('land-sub'), cta=document.getElementById('land-cta');
-  if(hook) hook.innerHTML=T.title;
-  if(sub) sub.textContent=T.titleSub||'';
+  var title=document.getElementById('l-title'), cta=document.getElementById('start-btn');
+  if(title) title.innerHTML=T.title;
   if(cta) cta.textContent=T.startBtn;
-  var trustLabel=document.getElementById('trust-label');
-  if(trustLabel) trustLabel.textContent=(curCountry==='kr'?T.trustLine:LANG.ko.trustLine)||'화장실 데이터';
+  // 언어 버튼 활성 상태
+  var bKo=document.getElementById('lang-ko'), bEn=document.getElementById('lang-en');
+  if(bKo) bKo.classList.toggle('active', curLang!=='en');
+  if(bEn) bEn.classList.toggle('active', curLang==='en');
   var travelLabel=document.getElementById('land-travel-label');
   var hint=document.getElementById('land-hint');
-  if(travelLabel) travelLabel.textContent = curCountry==='kr' ? '여행 중이세요?' : '다른 여행지도 있어요';
-  if(hint) hint.textContent = curCountry==='kr' ? '✨ 여행지에 도착하면 자동으로 전환돼요' : '✨ 국경을 넘으면 자동으로 전환돼요';
+  if(travelLabel) travelLabel.textContent = curCountry==='kr' ? '✈️ 해외 여행 중이신가요?' : '다른 여행지도 있어요';
+  if(hint) hint.textContent = curCountry==='kr' ? '지도를 누르면 해당 나라 화장실로 이동해요' : '✨ 국경을 넘으면 자동으로 전환돼요';
   renderCountryCards();
 }
 function renderCountryCards(){
