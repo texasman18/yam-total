@@ -1,0 +1,24 @@
+{
+  "name": "얌 - 내 주변 화장실",
+  "short_name": "얌 YAM",
+  "description": "급할 때 가장 먼저 찾는 화장실 앱",
+  "start_url": "/index.html",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f2f0eb",
+  "theme_color": "#00754A",
+  "icons": [
+    {
+      "src": "icon.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "icon.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
+    }
+  ]
+}

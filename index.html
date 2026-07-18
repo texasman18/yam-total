@@ -1,0 +1,1589 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>얌 - 내 주변 화장실</title>
+  <link rel="icon" href="icon.png" type="image/png">
+  <link rel="shortcut icon" href="icon.png" type="image/png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#00754A">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="얌 YAM">
+  <link rel="apple-touch-icon" href="icon.png">
+  <meta name="description" content="급할 때 가장 먼저 찾는 화장실 앱. 한국·일본·대만 78,000여 곳의 화장실을 한국어로 찾아드립니다.">
+  <meta property="og:title" content="얌 - 내 주변 화장실">
+  <meta property="og:image" content="icon.png">
+  <!-- 카카오맵 SDK (정적 유지 — KR 모드 전용) -->
+  <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=f59ba786d95984d04a6269d4e1e86bf3&libraries=services,geocoder"></script>
+  <!-- Google Maps SDK는 동적 로더로 로드한다 (ensureGoogleLang) — 정적 태그 없음 -->
+  <script>
+    // ── 부트스트랩: 국가/언어 초기값 (URL > localStorage > 기본값) ──
+    var _qs=new URLSearchParams(location.search);
+    var _uc=_qs.get('country');
+    var curCountry=(_uc==='jp'||_uc==='tw')?_uc:(function(){
+      var s=localStorage.getItem('yam_country');
+      return (s==='jp'||s==='tw')?s:'kr';
+    })();
+    var curLang=(curCountry==='kr')?(_qs.get('lang')||'ko'):'ko';
+  </script>
+  <style>
+    :root{
+      --safe-top:54px;
+      --g:#00754A; --gd:#1E3932;
+      --land-bg:linear-gradient(160deg,#EAF6F0 0%,#F7FBF9 45%,#EFF7F3 100%);
+      --glass-bg:rgba(255,255,255,0.62); --glass-bd:rgba(255,255,255,0.85);
+      --txt:#12241D; --txt2:rgba(18,36,29,0.62);
+    }
+    @media (prefers-color-scheme:dark){
+      :root{
+        --land-bg:linear-gradient(160deg,#0E1A15 0%,#12211B 55%,#0E1A15 100%);
+        --glass-bg:rgba(30,57,50,0.55); --glass-bd:rgba(255,255,255,0.14);
+        --txt:#EAF3EF; --txt2:rgba(234,243,239,0.62);
+      }
+    }
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:#f2f0eb;color:rgba(0,0,0,0.87);overflow:hidden;}
+
+    /* ══════════════ 랜딩 (리뉴얼) ══════════════ */
+    #landing{position:fixed;inset:0;z-index:999;background:var(--land-bg);color:var(--txt);
+      padding:calc(var(--safe-top) + 14px) 22px calc(env(safe-area-inset-bottom,0px) + 22px);
+      display:flex;flex-direction:column;overflow-y:auto;transition:opacity 0.5s;}
+    #landing.hide{opacity:0;pointer-events:none;}
+
+    .glass,.glass-pill,.land-cta{
+      background:var(--glass-bg);
+      -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+      border:1px solid var(--glass-bd);
+      box-shadow:0 8px 28px rgba(18,36,29,0.10), inset 0 1px 0 rgba(255,255,255,0.35);}
+    @supports not (backdrop-filter:blur(1px)){ .glass,.glass-pill,.land-cta{background:rgba(255,255,255,0.94);} }
+    @media (prefers-color-scheme:dark){
+      @supports not (backdrop-filter:blur(1px)){ .glass,.glass-pill,.land-cta{background:#16261F;} }
+    }
+
+    .land-top{display:flex;align-items:center;justify-content:space-between;}
+    .land-logo{width:40px;height:40px;border-radius:12px;overflow:hidden;box-shadow:0 3px 10px rgba(0,0,0,0.12);flex-shrink:0;}
+    .land-logo img{width:100%;height:100%;object-fit:cover;}
+
+    /* 언어 토글 스위치 (KR 모드에서만 노출) */
+    .lang-toggle{display:flex;align-items:center;gap:5px;cursor:pointer;flex-shrink:0;user-select:none;min-height:32px;}
+    .lt-ko,.lt-en{font-size:16px;transition:opacity 0.25s;line-height:1;opacity:0.45;}
+    .lt-ko.active,.lt-en.active{opacity:1;}
+    .lt-track{width:36px;height:20px;background:#d4e9e2;border-radius:10px;position:relative;transition:background 0.25s;flex-shrink:0;}
+    .lt-track.en{background:#00754A;}
+    .lt-thumb{position:absolute;top:2px;left:2px;width:16px;height:16px;background:white;border-radius:50%;transition:transform 0.25s cubic-bezier(0.4,0,0.2,1);box-shadow:0 1px 3px rgba(0,0,0,0.2);}
+    .lt-track.en .lt-thumb{transform:translateX(16px);}
+
+    .land-hook{font-size:clamp(38px,10.5vw,54px);line-height:1.1;font-weight:800;
+      letter-spacing:-0.03em;margin:8vh 0 10px;opacity:0;transform:translateY(8px);
+      animation:landUp 0.22s ease-out 0.05s forwards;}
+    .land-hook .hi{color:var(--g);}
+    .land-sub{font-size:15.5px;color:var(--txt2);margin-bottom:auto;line-height:1.5;
+      opacity:0;transform:translateY(8px);animation:landUp 0.22s ease-out 0.12s forwards;}
+    @keyframes landUp{to{opacity:1;transform:translateY(0);}}
+
+    .land-cta{width:100%;min-height:56px;border-radius:20px;font-size:17px;font-weight:700;
+      color:#fff;background:linear-gradient(135deg,#00915C,var(--g));cursor:pointer;border:none;
+      transition:transform .18s;margin-top:22px;font-family:inherit;
+      box-shadow:0 10px 24px rgba(0,117,74,0.32), inset 0 1px 0 rgba(255,255,255,0.25);}
+    .land-cta:active{transform:scale(0.97);}
+
+    .land-travel{margin-top:26px;}
+    .land-label{font-size:13px;font-weight:700;color:var(--txt2);margin-bottom:10px;}
+    .bento{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    .trip-card{position:relative;border-radius:18px;padding:16px 10px 12px;min-height:112px;
+      display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
+      cursor:pointer;transition:transform .18s;text-align:center;}
+    .trip-card:active{transform:scale(0.96);}
+    .trip-svg{width:52px;height:auto;position:absolute;top:12px;left:50%;transform:translateX(-50%);opacity:0.92;}
+    .trip-svg path{fill:var(--g);}
+    .trip-flag{position:absolute;top:8px;right:10px;font-size:15px;}
+    .trip-label{font-size:13px;font-weight:700;color:var(--txt);line-height:1.3;}
+    .kr-card{justify-content:center;min-height:80px;}
+    .kr-card .trip-flag{position:static;font-size:26px;margin-bottom:4px;}
+    .land-hint{font-size:12px;color:var(--txt2);margin-top:10px;text-align:center;}
+
+    .land-trust{margin:18px auto 4px;display:block;font-size:12px;color:var(--txt2);
+      background:none;border:none;cursor:pointer;font-family:inherit;text-align:center;padding:8px;min-height:32px;}
+    .land-powered{text-align:center;font-size:11px;color:var(--txt2);opacity:0.7;margin-top:2px;}
+    .land-powered a{color:inherit;}
+
+    @media (prefers-reduced-motion:reduce){
+      #landing *{transition:none!important;animation:none!important;opacity:1!important;transform:none!important;}
+    }
+
+    /* ══════════════ 지도화면 (KR/JP/TW 공통) ══════════════ */
+    #mapscreen{position:fixed;inset:0;z-index:1;visibility:hidden;}
+    #mapscreen.show{visibility:visible;}
+    #kakaoMap{position:absolute;inset:0;width:100%!important;height:100%!important;}
+
+    .topbar{position:absolute;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;gap:10px;padding:calc(var(--safe-top) + 12px) 14px 12px;background:linear-gradient(to bottom,rgba(242,240,235,0.97) 70%,transparent);pointer-events:none;}
+    .topbar>*{pointer-events:auto;}
+    .logo-sm{width:38px;height:38px;border-radius:12px;overflow:hidden;flex-shrink:0;box-shadow:0 3px 10px rgba(0,0,0,0.12);}
+    .logo-sm img{width:100%;height:100%;object-fit:cover;}
+    .search-box{flex:1;background:white;border-radius:50px;padding:10px 16px;display:flex;align-items:center;gap:8px;box-shadow:0 1px 3px rgba(0,0,0,0.1),0 2px 2px rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.06);cursor:pointer;}
+    .search-box span{color:rgba(0,0,0,0.4);font-size:14px;}
+
+    .kr-return{display:none;background:white;border:1.5px solid rgba(0,98,65,0.2);border-radius:50px;padding:0 14px;font-size:13px;font-weight:700;color:#006241;cursor:pointer;white-space:nowrap;font-family:inherit;box-shadow:0 1px 3px rgba(0,0,0,0.1);min-height:44px;align-items:center;flex-shrink:0;}
+    body.abroad .kr-return{display:flex;}
+    body.abroad .lang-toggle{display:none!important;}
+
+    .filters{position:absolute;top:calc(var(--safe-top) + 66px);left:0;right:0;z-index:100;display:flex;gap:8px;padding:0 14px;overflow-x:auto;scrollbar-width:none;}
+    .filters::-webkit-scrollbar{display:none;}
+    .fc{padding:7px 16px;border-radius:50px;border:1.5px solid rgba(0,98,65,0.2);font-size:13px;font-weight:700;white-space:nowrap;background:white;cursor:pointer;font-family:inherit;box-shadow:0 1px 1px rgba(0,0,0,0.14),0 1px 3px rgba(0,0,0,0.06);flex-shrink:0;transition:all 0.2s;}
+    .fc.on{background:#00754A;color:white;border-color:#00754A;box-shadow:0 4px 12px rgba(0,117,74,0.3);}
+
+    #loc-pill{position:absolute;top:calc(var(--safe-top) + 108px);left:50%;transform:translateX(-50%);z-index:100;background:white;border-radius:50px;padding:7px 16px;font-size:13px;font-weight:700;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,0.1),0 2px 2px rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.06);display:none;align-items:center;gap:6px;}
+    #loc-pill.show{display:flex;}
+    .bdot{width:8px;height:8px;background:#00754A;border-radius:50%;flex-shrink:0;}
+    #count-pill{position:absolute;top:calc(var(--safe-top) + 146px);left:50%;transform:translateX(-50%);z-index:100;background:white;border-radius:50px;padding:6px 16px;font-size:13px;font-weight:700;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,0.1),0 2px 2px rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.06);display:none;align-items:center;gap:6px;}
+    #count-pill.show{display:flex;}
+
+    #loading{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:200;background:white;border-radius:50px;padding:14px 24px;display:none;align-items:center;gap:10px;box-shadow:0 0 0.5px rgba(0,0,0,0.14),0 8px 16px rgba(0,0,0,0.1);font-size:13px;font-weight:700;}
+    #loading.show{display:flex;}
+    #mini-loading{position:absolute;top:calc(var(--safe-top) + 108px);right:14px;z-index:200;background:white;border-radius:50%;width:36px;height:36px;display:none;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,0.15);}
+    #mini-loading.show{display:flex;}
+    .spin{width:18px;height:18px;border:2.5px solid #d4e9e2;border-top-color:#00754A;border-radius:50%;animation:spin 0.7s linear infinite;}
+    .spin-sm{width:16px;height:16px;border:2px solid #d4e9e2;border-top-color:#00754A;border-radius:50%;animation:spin 0.7s linear infinite;}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    .fabs{position:absolute;right:14px;bottom:40px;z-index:100;display:flex;flex-direction:column;gap:10px;align-items:center;}
+    .fab{width:46px;height:46px;border-radius:50%;background:white;border:none;box-shadow:0 0 6px rgba(0,0,0,0.14),0 4px 8px rgba(0,0,0,0.1);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+    .fab-myloc{width:56px;height:56px;border-radius:50%;border:none;cursor:pointer;background:linear-gradient(135deg,#00754A,#1E3932);box-shadow:0 0 6px rgba(0,117,74,0.24),0 8px 12px rgba(0,117,74,0.2);display:flex;align-items:center;justify-content:center;font-size:24px;transition:transform 0.15s;}
+    .fab-myloc:active{transform:scale(0.92);}
+
+    .legend{position:absolute;left:14px;bottom:40px;z-index:100;background:rgba(242,240,235,0.95);padding:10px 14px;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,0.08),0 2px 2px rgba(0,0,0,0.04);}
+    .li{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;margin-bottom:4px;color:rgba(0,0,0,0.7);}
+    .li:last-child{margin-bottom:0;}
+    .ld{width:10px;height:10px;border-radius:50%;}
+    .ld.pub{background:#2563eb;}
+    .ld.opn{background:#00754A;}
+    .ld.goo{background:#cba258;}
+    .legend .src-link{display:none;margin-top:8px;padding-top:8px;border-top:1px solid rgba(0,0,0,0.08);font-size:11px;font-weight:700;color:rgba(0,0,0,0.45);cursor:pointer;text-decoration:underline;}
+    body.abroad .legend .src-link{display:block;}
+
+    #bottom-search{display:none!important;}
+
+    .cm{background:white;border-radius:50px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 0 0.5px rgba(0,0,0,0.14),0 2px 4px rgba(0,0,0,0.18);border:2px solid;position:relative;white-space:nowrap;display:flex;align-items:center;gap:4px;font-family:inherit;}
+    .cm::after{content:'';position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-width:6px;border-top-style:solid;}
+    .cm-pub{border-color:#2563eb;color:#2563eb;}
+    .cm-pub::after{border-top-color:#2563eb;}
+    .cm-opn{border-color:#00754A;color:#006241;}
+    .cm-opn::after{border-top-color:#00754A;}
+    .cm-goo{border-color:#cba258;color:#8a6f2e;}
+    .cm-goo::after{border-top-color:#cba258;}
+
+    .overlay{position:fixed;inset:0;background:rgba(30,57,50,0.5);z-index:600;opacity:0;pointer-events:none;transition:opacity 0.3s;}
+    .overlay.on{opacity:1;pointer-events:auto;}
+    .sheet{position:fixed;bottom:0;left:0;right:0;z-index:601;background:white;border-radius:24px 24px 0 0;transform:translateY(100%);transition:transform 0.3s cubic-bezier(0.2,0.8,0.2,1);max-height:75vh;display:flex;flex-direction:column;box-shadow:0 -4px 24px rgba(0,0,0,0.1);}
+    .sheet.on{transform:translateY(0);}
+    .handle{width:40px;height:4px;background:#d4e9e2;border-radius:2px;margin:12px auto;flex-shrink:0;cursor:pointer;}
+    .sc{overflow-y:auto;flex:1;padding:0 20px 40px;}
+    .det-type{font-size:10px;font-weight:800;color:#006241;letter-spacing:0.18em;text-transform:uppercase;margin-bottom:4px;}
+    .det-name{font-size:20px;font-weight:700;margin-bottom:4px;line-height:1.3;color:rgba(0,0,0,0.87);}
+    .det-jp{font-size:12px;color:rgba(0,0,0,0.45);margin:-2px 0 6px;line-height:1.4;}
+    .det-addr{font-size:13px;color:rgba(0,0,0,0.58);margin-bottom:14px;line-height:1.5;}
+    .dist-card{background:linear-gradient(135deg,#f2f0eb,#e8f5ee);border-radius:14px;padding:14px 18px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;}
+    .dist-num{font-size:32px;font-weight:900;color:#00754A;}
+    .dist-right{text-align:right;}
+    .dist-walk{font-size:12px;font-weight:700;color:#006241;}
+    .dist-min{font-size:11px;color:rgba(0,0,0,0.4);}
+    .badges{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
+    .badge{padding:5px 12px;border-radius:50px;font-size:12px;font-weight:700;}
+    .b-pub{background:#dbeeff;color:#2563eb;}
+    .b-opn{background:#d4e9e2;color:#006241;}
+    .b-goo{background:#faf0d8;color:#8a6f2e;}
+    .b-free{background:#e8f5ee;color:#00754A;}
+    .b-fac{background:#e8f5ee;color:#00754A;}
+    .badge-grade{background:#FFF3D6;color:#8A6100;}
+    .info-row{display:flex;align-items:flex-start;gap:10px;padding:11px 0;border-bottom:1px solid #f2f0eb;font-size:14px;}
+    .info-row:last-of-type{border-bottom:none;}
+    .ii{font-size:18px;width:26px;text-align:center;flex-shrink:0;}
+    .il{color:rgba(0,0,0,0.4);font-size:10px;font-weight:700;min-width:48px;padding-top:2px;text-transform:uppercase;letter-spacing:0.08em;}
+    .iv{font-weight:600;flex:1;line-height:1.4;color:rgba(0,0,0,0.87);}
+    .acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;}
+    .act{flex:1 1 calc(50% - 4px);min-width:120px;padding:13px 0;border-radius:50px;font-size:14px;font-weight:700;border:none;cursor:pointer;font-family:inherit;transition:transform 0.15s;}
+    .act:active{transform:scale(0.95);}
+    .a-apple{background:#eef2ff;color:#3730a3;}
+    .a-kakao{background:#e8f5ee;color:#006241;}
+    .a-naver{background:#d4e9e2;color:#00754A;}
+    .a-gmap{background:#e8f5ee;color:#006241;}
+    .a-copy{background:#f2f0eb;color:rgba(0,0,0,0.7);}
+
+    #srch{position:fixed;inset:0;z-index:700;background:white;display:none;flex-direction:column;}
+    #srch.show{display:flex;}
+    .srch-top{padding:13px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #e8f0ec;}
+    .srch-back{background:none;border:none;font-size:24px;cursor:pointer;color:rgba(0,0,0,0.4);}
+    .srch-inp{flex:1;border:none;outline:none;font-size:16px;font-family:inherit;color:rgba(0,0,0,0.87);}
+    .srch-go{background:#00754A;color:white;border:none;border-radius:50px;padding:8px 18px;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit;transition:transform 0.15s;}
+    .srch-go:active{transform:scale(0.95);}
+    .srch-label{padding:14px 16px 8px;font-size:11px;color:rgba(0,0,0,0.4);font-weight:700;letter-spacing:0.12em;text-transform:uppercase;}
+    .qp-wrap{display:flex;flex-wrap:wrap;gap:8px;padding:0 16px;}
+    .qp{padding:7px 16px;border-radius:50px;border:1.5px solid #d4e9e2;font-size:13px;font-weight:600;background:white;cursor:pointer;font-family:inherit;transition:all 0.2s;}
+    .qp:active{background:#e8f5ee;border-color:#00754A;transform:scale(0.95);}
+
+    #toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(14px);background:#1E3932;color:white;padding:10px 22px;border-radius:50px;font-size:13px;font-weight:700;opacity:0;transition:all 0.3s;z-index:800;white-space:nowrap;max-width:88vw;overflow:hidden;text-overflow:ellipsis;}
+    #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  </style>
+</head>
+<body>
+
+<!-- 랜딩 (리뉴얼) -->
+<div id="landing">
+  <div class="land-top">
+    <div class="land-logo"><img src="icon.png" alt="얌" onerror="this.parentElement.style.background='linear-gradient(135deg,#00754A,#1E3932)'"></div>
+    <div class="lang-toggle" onclick="toggleLang()" title="언어 변경">
+      <span class="lt-ko">🇰🇷</span>
+      <div class="lt-track"><div class="lt-thumb"></div></div>
+      <span class="lt-en">🇬🇧</span>
+    </div>
+  </div>
+
+  <h1 class="land-hook" id="land-hook">급할 때,<br><span class="hi">3초.</span></h1>
+  <p class="land-sub" id="land-sub">내 주변 화장실, 얌이 가장 먼저 찾아드려요</p>
+
+  <button class="land-cta" id="land-cta" onclick="startApp()">📍 내 주변 화장실 찾기</button>
+
+  <div class="land-travel" id="land-travel">
+    <div class="land-label" id="land-travel-label">여행 중이세요?</div>
+    <div class="bento" id="country-cards"></div>
+    <div class="land-hint" id="land-hint">✨ 여행지에 도착하면 자동으로 전환돼요</div>
+  </div>
+
+  <button class="land-trust" onclick="openSources()">🚻 <span id="trust-cnt">78,000</span>+ <span id="trust-label">화장실 데이터</span> · 출처 <span style="text-decoration:underline">ⓘ</span></button>
+  <div class="land-powered">Powered by 테크셀 · <a href="mailto:texasman@naver.com">문의</a></div>
+</div>
+
+<!-- 지도화면 -->
+<div id="mapscreen">
+  <div id="kakaoMap"></div>
+  <div class="topbar">
+    <div class="logo-sm"><img src="icon.png" alt="얌" onerror="this.parentElement.style.background='linear-gradient(135deg,#00754A,#1E3932)'"></div>
+    <div class="search-box" onclick="openSrch()"><span>🔍</span><span id="srch-label">지역명 또는 주소 검색</span></div>
+    <div class="lang-toggle" onclick="toggleLang()" title="언어 변경">
+      <span class="lt-ko" id="lt-ko">🇰🇷</span>
+      <div class="lt-track">
+        <div class="lt-thumb" id="lt-thumb"></div>
+      </div>
+      <span class="lt-en" id="lt-en">🇬🇧</span>
+    </div>
+    <button class="kr-return" onclick="setCountry('kr',{manual:true})">🇰🇷 한국</button>
+  </div>
+  <div class="filters">
+    <button class="fc on" id="fc-all" onclick="setFilter('all')">전체</button>
+    <button class="fc" id="fc-pub" onclick="setFilter('public')">🚻 공중화장실</button>
+    <button class="fc" id="fc-opn" onclick="setFilter('open')">🏢 개방화장실</button>
+  </div>
+  <div id="loc-pill"><div class="bdot"></div><span id="loc-txt">위치 확인 중...</span></div>
+  <div id="count-pill">📍 <span id="cnt">0</span><span id="cnt-label"> 개 발견</span></div>
+  <div id="loading"><div class="spin"></div><span id="loading-txt">화장실 검색 중...</span></div>
+  <div id="mini-loading"><div class="spin-sm"></div></div>
+  <div id="bottom-search"></div>
+  <div class="fabs">
+    <button class="fab" id="fab-plus" onclick="zoomIn()" title="확대">＋</button>
+    <button class="fab" id="fab-minus" onclick="zoomOut()" title="축소">－</button>
+    <button class="fab-myloc" onclick="goMyLoc()" title="현재 위치">📍</button>
+  </div>
+  <div class="legend">
+    <div class="li"><div class="ld pub"></div><span id="leg-pub">공중화장실</span></div>
+    <div class="li"><div class="ld opn"></div><span id="leg-opn">개방화장실</span></div>
+    <div class="li"><div class="ld goo"></div><span id="leg-goo">Google 개방</span></div>
+    <div class="src-link" onclick="openSources()">ⓘ 데이터 출처</div>
+  </div>
+</div>
+
+<!-- 바텀시트 -->
+<div class="overlay" id="overlay" onclick="closeSheet()"></div>
+<div class="sheet" id="sheet">
+  <div class="handle" onclick="closeSheet()"></div>
+  <div class="sc" id="sheet-body"></div>
+</div>
+
+<!-- 검색 -->
+<div id="srch">
+  <div class="srch-top">
+    <button class="srch-back" onclick="closeSrch()">←</button>
+    <input class="srch-inp" id="srch-inp" type="text" placeholder="지역명 또는 주소">
+    <button class="srch-go" onclick="doSearch()">검색</button>
+  </div>
+  <div class="srch-label" id="srch-quick-label">빠른 선택</div>
+  <div class="qp-wrap" id="qp-wrap"></div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// ── 다국어 사전 (ko/en = KR 모드, jp/tw = 해외 모드 한국어 UI) ──
+// ═══════════════════════════════════════════════════════════
+var LANG={
+  ko:{
+    title:'급할 때,<br><span class="hi">3초.</span>',
+    titleSub:'내 주변 화장실, 얌이 가장 먼저 찾아드려요',
+    trustLine:'화장실 데이터',
+    startBtn:'📍 내 주변 화장실 찾기',
+    searchHint:'지역명 또는 주소 검색',
+    filterAll:'전체', filterPub:'🚻 공중화장실', filterOpn:'🏢 개방화장실',
+    loading:'화장실 검색 중...',
+    toastLoc:'📍 내 위치 확인 중...',
+    toastNoLoc:'위치 권한을 허용해주세요',
+    toastLocWeak:'GPS 신호가 약해요. 잠시 후 다시 시도해주세요',
+    toastNone:'주변에 화장실이 없어요. 지도를 이동해보세요.',
+    toastNoQ:'검색어를 입력해주세요',
+    toastNoRes:'검색 결과가 없습니다',
+    srchPlaceholder:'지역명 또는 주소 (예: 홍대입구, 명동)',
+    detPublic:'공중화장실', detOpen:'개방화장실', detGoogle:'Google 개방화장실',
+    detFree:'✅ 무료', detFrom:'현재 위치에서',
+    detNear:'바로 근처!', detClose:'가까워요', detWalkable:'도보 가능',
+    detWalk:'분', detAddr:'주소', detPhone:'전화', detSrc:'출처',
+    detApple:'🍎 Apple 지도', detKakao:'🗺️ 카카오맵', detNaver:'🟢 네이버맵', detCopy:'📋 복사',
+    detCopied:'📋 주소 복사됨',
+    cntLabel:' 개 발견',
+    srcPublic:'행정안전부 공공데이터',
+    srcKakao:'카카오맵',
+    srcGoogle:'Google Maps',
+    legPub:'공중화장실', legOpn:'개방화장실', legGoo:'Google 개방',
+    qp:['강남역','홍대입구','명동','이태원','신촌','잠실','여의도','종로','건대입구','신림'],
+  },
+  en:{
+    title:'When it\'s urgent,<br><span class="hi">3 seconds.</span>',
+    titleSub:'Find the nearest restroom, instantly',
+    trustLine:'restroom locations',
+    startBtn:'📍 Find Nearby Restrooms',
+    searchHint:'Search by area or address',
+    filterAll:'All', filterPub:'🚻 Public', filterOpn:'🏢 Open Access',
+    loading:'Searching restrooms...',
+    toastLoc:'📍 Getting your location...',
+    toastNoLoc:'Please allow location access',
+    toastLocWeak:'Weak GPS signal. Please try again shortly',
+    toastNone:'No restrooms found nearby. Try moving the map.',
+    toastNoQ:'Please enter a search term',
+    toastNoRes:'No results found',
+    srchPlaceholder:'Area or address (e.g. Gangnam, Myeongdong)',
+    detPublic:'Public Restroom', detOpen:'Open Access Restroom', detGoogle:'Google Open Restroom',
+    detFree:'✅ Free', detFrom:'From your location',
+    detNear:'Right nearby!', detClose:'Very close', detWalkable:'Walkable',
+    detWalk:'min walk', detAddr:'Address', detPhone:'Phone', detSrc:'Source',
+    detApple:'🍎 Apple Maps', detKakao:'🗺️ Kakao Maps', detNaver:'🟢 Naver Maps', detCopy:'📋 Copy',
+    detCopied:'📋 Address copied!',
+    cntLabel:' found',
+    srcPublic:'Korea Public Data',
+    srcKakao:'Kakao Maps',
+    srcGoogle:'Google Maps',
+    legPub:'Public', legOpn:'Open Access', legGoo:'Google Open',
+    qp:['Gangnam','Hongdae','Myeongdong','Itaewon','Sinchon','Jamsil','Yeouido','Jongno','Konkuk','Sillim'],
+  },
+  jp:{
+    title:'일본 여행 중<br><span class="hi">급할 때</span><br>얌이 찾아드려요',
+    titleSub:'일본 전역 화장실을 한국어로 찾아드려요',
+    startBtn:'📍 일본에서 화장실 찾기',
+    searchHint:'도시·역·명소 검색 (예: 난바, 신주쿠)',
+    filterAll:'전체', filterPub:'🚻 공중화장실', filterOpn:'🏢 개방·상업시설',
+    loading:'화장실 검색 중...',
+    toastLoc:'📍 내 위치 확인 중...',
+    toastNoLoc:'위치 권한을 허용해주세요',
+    toastNone:'주변에 화장실이 없어요. 지도를 이동하거나 도시를 선택해보세요.',
+    toastNoQ:'검색어를 입력해주세요',
+    toastNoRes:'검색 결과가 없습니다',
+    toastNoCity:'현재 도시는 화장실 찾기가 제공되지 않습니다',
+    srchPlaceholder:'도시·역·명소 (예: 난바, 신주쿠, 나라공원)',
+    detPublic:'공중화장실', detOpen:'개방화장실', detGoogle:'Google 검색 결과',
+    detFree:'✅ 무료', detFrom:'현재 위치에서',
+    detNear:'바로 근처!', detClose:'가까워요', detWalkable:'도보 가능',
+    detWalk:'분', detAddr:'주소', detPhone:'전화', detSrc:'출처',
+    detGoogleDir:'🗺️ 구글맵 길찾기', detApple:'🍎 Apple 지도', detCopy:'📋 주소 복사',
+    detCopied:'📋 주소 복사됨 (택시기사님께 보여주세요)',
+    cntLabel:' 개 발견',
+    srcCity:'일본 지자체 오픈데이터', srcOsm:'OpenStreetMap', srcGoogle:'Google Maps',
+    legPub:'공중화장실', legOpn:'개방화장실', legGoo:'Google 검색',
+    facWc:'♿ 휠체어', facBa:'🚼 기저귀교환대', facOs:'⚕️ 오스토메이트',
+    qp:['오사카 난바','도쿄 신주쿠','후쿠오카 텐진','교토역','삿포로','나하 국제거리','나고야역','고베 산노미야','나라공원','요코하마'],
+  },
+  tw:{
+    title:'대만 여행 중<br><span class="hi">급할 때</span><br>얌이 찾아드려요',
+    titleSub:'대만 전역 화장실을 한국어로 찾아드려요',
+    startBtn:'📍 대만에서 화장실 찾기',
+    searchHint:'도시·역·명소 (예: 시먼딩, 지우펀)',
+    filterAll:'전체', filterPub:'🚻 공중화장실', filterOpn:'🏢 개방·상업시설',
+    loading:'화장실 검색 중...',
+    toastLoc:'📍 내 위치 확인 중...',
+    toastNoLoc:'위치 권한을 허용해주세요',
+    toastNone:'주변에 화장실이 없어요. 지도를 이동하거나 다른 지역을 검색해보세요.',
+    toastNoQ:'검색어를 입력해주세요',
+    toastNoRes:'검색 결과가 없습니다',
+    toastOutTW:'대만 밖이에요. 타이베이 기본 화면으로 이동합니다',
+    srchPlaceholder:'도시·역·명소 (예: 시먼딩, 지우펀)',
+    detPublic:'공중화장실', detOpen:'개방화장실', detGoogle:'Google 검색 결과',
+    detFree:'✅ 무료', detFrom:'현재 위치에서',
+    detNear:'바로 근처!', detClose:'가까워요', detWalkable:'도보 가능',
+    detWalk:'분', detAddr:'주소', detPhone:'전화', detSrc:'출처',
+    detGoogleDir:'🗺️ 구글맵 길찾기', detApple:'🍎 Apple 지도', detCopy:'📋 주소 복사',
+    detCopied:'📋 주소 복사됨 (택시기사님께 보여주세요)',
+    cntLabel:' 개 발견',
+    srcOsm:'OpenStreetMap', srcGov:'대만 환경부 오픈데이터', srcGoogle:'Google Maps',
+    legPub:'공중화장실', legOpn:'개방화장실', legGoo:'Google 검색',
+    facWc:'♿ 휠체어', facBa:'🚼 기저귀교환대', facOs:'⚕️ 오스토메이트',
+    gradeTop:'🏅 위생 특우수', gradeGood:'위생 우수',
+    qp:['시먼딩','지우펀','타이베이 101','융캉제','단수이','펑지아 야시장','르웨탄','안핑 옛거리','가오슝 보얼','예류'],
+  }
+};
+var T = curCountry==='kr' ? LANG[curLang] : LANG[curCountry];
+
+// ── 한글 로마자 변환 (국립국어원 표준, KR-EN 전용) ───────────
+var HANGUL_ONSET=['g','kk','n','d','tt','r','m','b','pp','s','ss','','j','jj','ch','k','t','p','h'];
+var HANGUL_VOWEL=['a','ae','ya','yae','eo','e','yeo','ye','o','wa','wae','oe','yo','u','wo','we','wi','yu','eu','ui','i'];
+var HANGUL_CODA=['','g','kk','gs','n','nj','nh','d','l','lg','lm','lb','ls','lt','lp','lh','m','b','bs','s','ss','ng','j','ch','k','t','p','h'];
+function romanize(text){
+  var result='';
+  for(var i=0;i<text.length;i++){
+    var code=text.charCodeAt(i);
+    if(code>=0xAC00&&code<=0xD7A3){
+      var offset=code-0xAC00;
+      var onset=Math.floor(offset/588);
+      var vowel=Math.floor((offset%588)/28);
+      var coda=offset%28;
+      result+=HANGUL_ONSET[onset]+HANGUL_VOWEL[vowel]+HANGUL_CODA[coda];
+    } else {
+      result+=text[i];
+    }
+  }
+  return result;
+}
+
+// ── KR-EN 번역 사전 (KR 모드 전용, 원본 그대로) ──────────────
+var KO_EN=[
+  ['열린 화잘실','Open Restroom'],['열린화잘실','Open Restroom'],
+  ['열린 화장실','Open Restroom'],['열린화장실','Open Restroom'],
+  ['공중화장실','Public Restroom'],['개방화장실','Open Restroom'],
+  ['무료화장실','Free Restroom'],['화장실','Restroom'],
+  ['행정복지센터','Community Service Center'],
+  ['주민센터','Community Center'],['동사무소','Community Center'],
+  ['구청','District Office'],['시청','City Hall'],
+  ['도서관','Library'],['체육관','Gymnasium'],['강당','Auditorium'],
+  ['복지관','Welfare Center'],['문화센터','Cultural Center'],
+  ['관광안내소','Tourist Info'],['보건소','Health Center'],
+  ['소방서','Fire Station'],['경찰서','Police Station'],
+  ['우체국','Post Office'],['주차장','Parking'],
+  ['공원','Park'],['광장','Plaza'],['상가','Plaza'],
+  ['프라자','Plaza'],['마트','Mart'],['편의점','Convenience Store'],
+  ['백화점','Department Store'],['쇼핑몰','Shopping Mall'],
+  ['아파트','Apt'],['빌딩','Bldg'],['센터','Center'],
+  ['병원','Hospital'],['의원','Clinic'],['약국','Pharmacy'],
+  ['초등학교','Elementary School'],['중학교','Middle School'],
+  ['고등학교','High School'],['대학교','University'],
+  ['유치원','Kindergarten'],['어린이집','Daycare'],
+  ['은행','Bank'],['역','Station'],['터미널','Terminal'],
+  ['지하철역','Subway Station'],['버스터미널','Bus Terminal'],
+  ['휴게소','Rest Area'],['주유소','Gas Station'],
+  ['충전소','Charging Station'],['골프장','Golf Course'],
+  ['수영장','Swimming Pool'],['운동장','Sports Field'],
+  ['입구','Entrance'],['출구','Exit'],['지하','Underground'],
+  ['앞','Front'],['뒤','Rear'],['옆','Side'],
+  ['1층','1F'],['2층','2F'],['3층','3F'],['4층','4F'],
+  ['서울특별시','Seoul'],['경기도','Gyeonggi'],
+  ['부산광역시','Busan'],['인천광역시','Incheon'],
+  ['대구광역시','Daegu'],['대전광역시','Daejeon'],
+  ['광주광역시','Gwangju'],['울산광역시','Ulsan'],
+  ['세종특별자치시','Sejong'],['강원특별자치도','Gangwon'],
+  ['충청북도','Chungbuk'],['충청남도','Chungnam'],
+  ['전라북도','Jeonbuk'],['전북특별자치도','Jeonbuk'],
+  ['전라남도','Jeonnam'],['경상북도','Gyeongbuk'],
+  ['경상남도','Gyeongnam'],['제주특별자치도','Jeju'],
+  ['강남구','Gangnam-gu'],['서초구','Seocho-gu'],['송파구','Songpa-gu'],
+  ['강동구','Gangdong-gu'],['강서구','Gangseo-gu'],['강북구','Gangbuk-gu'],
+  ['마포구','Mapo-gu'],['용산구','Yongsan-gu'],['종로구','Jongno-gu'],
+  ['중구','Jung-gu'],['동대문구','Dongdaemun-gu'],['성동구','Seongdong-gu'],
+  ['광진구','Gwangjin-gu'],['중랑구','Jungnang-gu'],['노원구','Nowon-gu'],
+  ['도봉구','Dobong-gu'],['성북구','Seongbuk-gu'],['은평구','Eunpyeong-gu'],
+  ['서대문구','Seodaemun-gu'],['양천구','Yangcheon-gu'],['구로구','Guro-gu'],
+  ['금천구','Geumcheon-gu'],['영등포구','Yeongdeungpo-gu'],
+  ['동작구','Dongjak-gu'],['관악구','Gwanak-gu'],
+  ['수원시','Suwon'],['성남시','Seongnam'],['안양시','Anyang'],
+  ['부천시','Bucheon'],['고양시','Goyang'],['용인시','Yongin'],
+  ['파주시','Paju'],['김포시','Gimpo'],['하남시','Hanam'],
+  ['남양주시','Namyangju'],['의정부시','Uijeongbu'],
+  ['평택시','Pyeongtaek'],['안산시','Ansan'],['시흥시','Siheung'],
+  ['군포시','Gunpo'],['의왕시','Uiwang'],['오산시','Osan'],
+  ['이천시','Icheon'],['광명시','Gwangmyeong'],['구리시','Guri'],
+];
+function translateToEn(text){
+  if(!text||curLang!=='en'||curCountry!=='kr') return text;
+  var r=text;
+  KO_EN.forEach(function(pair){
+    r=r.replace(new RegExp(pair[0],'g'),pair[1]);
+  });
+  r=r.replace(/[가-힣]+/g,function(match){
+    return romanize(match);
+  });
+  r=r.replace(/(^|\s)([a-z])/g,function(m,p1,p2){return p1+p2.toUpperCase();});
+  return r;
+}
+
+// ── 일본어→한글 표시 변환 (JP 모드 전용, yam-japan 그대로 이식) ──
+var JA_KO=[
+  ['公衆トイレ',' 공중화장실'],['公衆便所',' 공중화장실'],['多目的トイレ',' 다목적화장실'],['多機能トイレ',' 다목적화장실'],
+  ['だれでもトイレ',' 다목적화장실'],['みんなのトイレ',' 다목적화장실'],['お手洗い',' 화장실'],['お手洗',' 화장실'],
+  ['化粧室',' 화장실'],['トイレ',' 화장실'],['便所',' 화장실'],['洗面所',' 세면실'],
+  ['身障者用','장애인용 '],['車椅子','휠체어 '],['バリアフリー','배리어프리 '],
+  ['児童公園',' 어린이공원'],['公園',' 공원'],['緑地',' 녹지'],['広場',' 광장'],['遊園地',' 유원지'],
+  ['運動場',' 운동장'],['野球場',' 야구장'],['競技場',' 경기장'],['体育館',' 체육관'],
+  ['駅前','역앞 '],['駅','역 '],['地下街',' 지하상가'],['地下鉄','지하철 '],['地下','지하 '],
+  ['改札口',' 개찰구'],['改札',' 개찰구'],['バスターミナル',' 버스터미널'],['バス停',' 버스정류장'],['停留所',' 정류장'],
+  ['駐車場',' 주차장'],['駐輪場',' 자전거주차장'],['サービスエリア',' 휴게소'],['道の駅',' 도로휴게소'],
+  ['市役所',' 시청'],['区役所',' 구청'],['役所',' 관공서'],['公民館',' 주민회관'],['会館',' 회관'],['集会所',' 마을회관'],
+  ['図書館',' 도서관'],['博物館',' 박물관'],['美術館',' 미술관'],['資料館',' 자료관'],['文化センター',' 문화센터'],
+  ['観光案内所',' 관광안내소'],['案内所',' 안내소'],['交番',' 파출소'],['警察署',' 경찰서'],['消防署',' 소방서'],
+  ['郵便局',' 우체국'],['病院',' 병원'],['小学校',' 초등학교'],['中学校',' 중학교'],['高校',' 고등학교'],['大学',' 대학교'],
+  ['幼稚園',' 유치원'],['保育園',' 어린이집'],['神社',' 신사'],['神宮',' 신궁'],['温泉',' 온천'],['銭湯',' 대중목욕탕'],
+  ['海岸',' 해안'],['海浜',' 해변'],['ビーチ',' 비치'],['港',' 항'],['水族館',' 수족관'],['動物園',' 동물원'],['植物園',' 식물원'],
+  ['入口',' 입구'],['出口',' 출구'],['東口','동쪽출구 '],['西口','서쪽출구 '],['南口','남쪽출구 '],['北口','북쪽출구 '],['中央口','중앙출구 '],
+  ['中央','중앙 '],['総合','종합 '],['市民','시민 '],['区民','구민 '],['観光','관광 '],
+  ['第','제'],['号','호'],['番','번'],['公衆','공중 '],
+  ['一丁目','1초메 '],['二丁目','2초메 '],['三丁目','3초메 '],['四丁目','4초메 '],['五丁目','5초메 '],
+  ['六丁目','6초메 '],['七丁目','7초메 '],['八丁目','8초메 '],['九丁目','9초메 '],['十丁目','10초메 '],['丁目','초메 '],
+  ['ビル',' 빌딩 '],['ウォーク',' 워크 '],['パーク',' 파크 '],['タワー',' 타워 '],['モール',' 몰 '],['デパート',' 백화점 '],
+  ['店内','매장내 '],['売店',' 매점 '],
+  ['０','0'],['１','1'],['２','2'],['３','3'],['４','4'],['５','5'],['６','6'],['７','7'],['８','8'],['９','9'],
+  ['東京都','도쿄도 '],['東京','도쿄 '],['新宿','신주쿠 '],['渋谷','시부야 '],['池袋','이케부쿠로 '],['上野','우에노 '],
+  ['浅草寺','센소지 '],['浅草','아사쿠사 '],['銀座','긴자 '],['秋葉原','아키하바라 '],['品川','시나가와 '],
+  ['代々木','요요기 '],['原宿','하라주쿠 '],['恵比寿','에비스 '],['六本木','롯폰기 '],['お台場','오다이바 '],['台場','다이바 '],
+  ['吉祥寺','기치조지 '],['中野','나카노 '],['立川','다치카와 '],['八王子','하치오지 '],['町田','마치다 '],
+  ['明治神宮','메이지신궁 '],['井の頭','이노카시라 '],['隅田','스미다 '],
+  ['大阪城','오사카성 '],['大阪府','오사카부 '],['大阪','오사카 '],['難波','난바 '],['なんば','난바 '],['梅田','우메다 '],
+  ['心斎橋','신사이바시 '],['道頓堀','도톤보리 '],['天王寺','덴노지 '],['新世界','신세카이 '],['通天閣','쓰텐카쿠 '],
+  ['中之島','나카노시마 '],['天満','덴마 '],['住吉','스미요시 '],['鶴橋','쓰루하시 '],
+  ['京都府','교토부 '],['京都','교토 '],['祇園','기온 '],['嵐山','아라시야마 '],['伏見稲荷','후시미이나리 '],['伏見','후시미 '],
+  ['河原町','가와라마치 '],['烏丸','가라스마 '],['二条','니조 '],['鴨川','가모가와 '],['清水寺','기요미즈데라 '],
+  ['金閣寺','킨카쿠지 '],['銀閣寺','긴카쿠지 '],
+  ['福岡','후쿠오카 '],['博多','하카타 '],['天神','덴진 '],['中洲','나카스 '],['大濠','오호리 '],
+  ['札幌','삿포로 '],['大通','오도리 '],['すすきの','스스키노 '],['狸小路','다누키코지 '],['円山','마루야마 '],
+  ['沖縄','오키나와 '],['那覇','나하 '],['国際通り','국제거리 '],['首里','슈리 '],['牧志','마키시 '],
+  ['名古屋','나고야 '],['大須','오스 '],['金山','가나야마 '],
+  ['神戸','고베 '],['三宮','산노미야 '],['元町','모토마치 '],['ハーバーランド','하버랜드 '],['北野','기타노 '],
+  ['奈良','나라 '],['東大寺','도다이지 '],['春日大社','가스가타이샤 '],['春日','가스가 '],
+  ['横浜','요코하마 '],['みなとみらい','미나토미라이 '],['関内','간나이 '],['中華街','중화거리 '],['山下','야마시타 '],['桜木町','사쿠라기초 '],
+];
+var KANA_BASE={'ア':'아','イ':'이','ウ':'우','エ':'에','オ':'오','カ':'카','キ':'키','ク':'쿠','ケ':'케','コ':'코','ガ':'가','ギ':'기','グ':'구','ゲ':'게','ゴ':'고','サ':'사','シ':'시','ス':'스','セ':'세','ソ':'소','ザ':'자','ジ':'지','ズ':'즈','ゼ':'제','ゾ':'조','タ':'타','チ':'치','ツ':'츠','テ':'테','ト':'토','ダ':'다','ヂ':'지','ヅ':'즈','デ':'데','ド':'도','ナ':'나','ニ':'니','ヌ':'누','ネ':'네','ノ':'노','ハ':'하','ヒ':'히','フ':'후','ヘ':'헤','ホ':'호','バ':'바','ビ':'비','ブ':'부','ベ':'베','ボ':'보','パ':'파','ピ':'피','プ':'푸','ペ':'페','ポ':'포','マ':'마','ミ':'미','ム':'무','メ':'메','モ':'모','ヤ':'야','ユ':'유','ヨ':'요','ラ':'라','リ':'리','ル':'루','レ':'레','ロ':'로','ワ':'와','ヲ':'오','ァ':'아','ィ':'이','ゥ':'우','ェ':'에','ォ':'오','ヴ':'부'};
+var KANA_DI={'キャ':'캬','キュ':'큐','キョ':'쿄','ギャ':'갸','ギュ':'규','ギョ':'교','シャ':'샤','シュ':'슈','ショ':'쇼','ジャ':'자','ジュ':'주','ジョ':'조','チャ':'차','チュ':'추','チョ':'초','ニャ':'냐','ニュ':'뉴','ニョ':'뇨','ヒャ':'햐','ヒュ':'휴','ヒョ':'효','ビャ':'뱌','ビュ':'뷰','ビョ':'뵤','ピャ':'퍄','ピュ':'퓨','ピョ':'표','ミャ':'먀','ミュ':'뮤','ミョ':'묘','リャ':'랴','リュ':'류','リョ':'료','ファ':'파','フィ':'피','フェ':'페','フォ':'포','ウィ':'위','ウェ':'웨','ウォ':'워','ティ':'티','ディ':'디','デュ':'듀','チェ':'체','シェ':'셰','ジェ':'제'};
+function addCoda(ch,codaIdx){
+  var c=ch.charCodeAt(0);
+  if(c<0xAC00||c>0xD7A3) return ch;
+  if((c-0xAC00)%28!==0) return ch;
+  return String.fromCharCode(c+codaIdx);
+}
+function kanaToKo(s){
+  var out='';
+  for(var i=0;i<s.length;i++){
+    var c=s[i], cc=c.charCodeAt(0);
+    if(cc>=0x3041&&cc<=0x3096){c=String.fromCharCode(cc+0x60);}
+    if(c==='ー')continue;
+    if(c==='ッ'){if(out)out=out.slice(0,-1)+addCoda(out.slice(-1),19);continue;}
+    if(c==='ン'){if(out)out=out.slice(0,-1)+addCoda(out.slice(-1),4);continue;}
+    var two=null;
+    if(i+1<s.length){
+      var n=s[i+1],nc=n.charCodeAt(0);
+      if(nc>=0x3041&&nc<=0x3096)n=String.fromCharCode(nc+0x60);
+      two=KANA_DI[c+n];
+    }
+    if(two){out+=two;i++;continue;}
+    out+=KANA_BASE[c]||c;
+  }
+  return out;
+}
+var _jaSorted=null;
+function translateToKoJP(text){
+  if(!text)return text;
+  if(!/[぀-ヿ㐀-鿿]/.test(text))return text;
+  if(!_jaSorted)_jaSorted=JA_KO.slice().sort(function(a,b){return b[0].length-a[0].length;});
+  var r=text;
+  _jaSorted.forEach(function(p){r=r.split(p[0]).join(p[1]);});
+  r=r.replace(/[ぁ-ゖァ-ヺー]+/g,function(m){return kanaToKo(m);});
+  return r.replace(/\s+/g,' ').trim();
+}
+
+// ── 중국어→한글 표시 변환 (TW 모드 전용, yam-TW 그대로 이식) ──
+var ZH_KO=[
+  ['公共廁所','공중화장실'],['公廁','공중화장실'],['廁所','화장실'],['洗手間','화장실'],['化妝室','화장실'],
+  ['無障礙廁所','장애인화장실'],['男女廁','남녀화장실'],['男廁','남자화장실'],['女廁','여자화장실'],
+  ['公園','공원'],['停車場','주차장'],['火車站','기차역'],['車站','역'],['站','역'],['捷運','MRT'],['高鐵','고속철'],
+  ['夜市','야시장'],['遊客中心','관광안내소'],['活動中心','주민센터'],['圖書館','도서관'],['加油站','주유소'],
+  ['派出所','파출소'],['廟','사원'],['寺','절'],['國小','초등학교'],['國中','중학교'],['高中','고등학교'],
+  ['大學','대학교'],['市場','시장'],['碼頭','부두'],['步道','산책로'],['登山口','등산로입구'],
+  ['臺北','타이베이'],['台北','타이베이'],['高雄','가오슝'],['臺中','타이중'],['台中','타이중'],
+  ['臺南','타이난'],['台南','타이난'],['桃園','타오위안'],['新北','신베이'],['基隆','지룽'],
+  ['花蓮','화롄'],['宜蘭','이란'],['嘉義','자이'],['新竹','신주'],['苗栗','먀오리'],['彰化','장화'],
+  ['南投','난터우'],['雲林','윈린'],['屏東','핑둥'],['臺東','타이둥'],['台東','타이둥'],
+  ['澎湖','펑후'],['金門','진먼'],['九份','지우펀'],['十分','스펀'],['野柳','예류'],['金瓜石','진과스'],
+  ['瑞芳','루이팡'],['平溪','핑시'],['西門町','시먼딩'],['西門','시먼'],['永康','융캉'],['淡水','단수이'],
+  ['士林','스린'],['北投','베이터우'],['信義','신이'],['萬華','완화'],['大安','다안'],['松山','쑹산'],
+  ['內湖','네이후'],['南港','난강'],['中正','중정'],['大同','다퉁'],['文山','원산'],['逢甲','펑지아'],
+  ['日月潭','르웨탄'],['安平','안핑'],['駁二','보얼'],['六合','류허'],['太魯閣','타로코'],['阿里山','아리산'],
+  ['墾丁','컨딩'],['貓空','마오콩'],['烏來','우라이'],['礁溪','자오시'],
+];
+var _zhSorted=null;
+function translateToKoTW(text){
+  if(!text)return text;
+  if(!/[一-鿿]/.test(text))return text;
+  if(!_zhSorted)_zhSorted=ZH_KO.slice().sort(function(a,b){return b[0].length-a[0].length;});
+  var r=text;
+  _zhSorted.forEach(function(p){r=r.split(p[0]).join(p[1]);});
+  return r.replace(/\s+/g,' ').trim();
+}
+
+// ── 표시 이름 통합 헬퍼: 국가별 번역 규칙 분기 ────────────────
+function dispName(text){
+  if(curCountry==='jp') return translateToKoJP(text);
+  if(curCountry==='kr') return translateToEn(text);
+  return text; // tw: 번들은 이미 k필드로 사전 번역, Google 결과는 push 시점에 translateToKoTW 적용됨
+}
+
+// ── 공통 유틸 ──────────────────────────────────────────────
+function esc(s){
+  return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+var toastT;
+function toast(msg){var el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastT);toastT=setTimeout(function(){el.classList.remove('show');},2800);}
+var isFirstLoad=true;
+function setLoad(v){
+  if(isFirstLoad){document.getElementById('loading').classList.toggle('show',v);}
+  else{document.getElementById('mini-loading').classList.toggle('show',v);}
+  if(!v&&isFirstLoad) isFirstLoad=false;
+}
+function calcDist(la1,ln1,la2,ln2){
+  var R=6371000,dLa=(la2-la1)*Math.PI/180,dLn=(ln2-ln1)*Math.PI/180;
+  var a=Math.sin(dLa/2)*Math.sin(dLa/2)+Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dLn/2)*Math.sin(dLn/2);
+  return Math.round(R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)));
+}
+
+// ── KR 필터링 (원본 그대로, KR 검색 경로 전용) ────────────────
+var EXCLUDE=['초등학교','중학교','고등학교','대학교','대학원','유치원','어린이집','특수학교','학교','군부대','부대','경찰서','교도소','막힘','뚫어','배관','하수구','싱크대','화장실수리','욕실용품','위생도기','세면대','화장품','미용실','마사지','청소','세탁','부동산','학원'];
+var VALID=['화장실','restroom','toilet','공중','개방','무료','공공','열린'];
+function isInvalid(name,addr,cat){
+  var s=(name||'')+' '+(addr||'')+' '+(cat||'');
+  if(EXCLUDE.some(function(k){return s.indexOf(k)>-1;})) return true;
+  var hasValid=VALID.some(function(k){return (name||'').toLowerCase().indexOf(k)>-1||(cat||'').toLowerCase().indexOf(k)>-1;});
+  return !hasValid;
+}
+
+// ── JP 도시 테이블 ────────────────────────────────────────
+var JP_CITIES=[
+  {id:'osaka',   n:'오사카',  la:34.6688, ln:135.5012, bbox:[34.57,135.38,34.78,135.61]},
+  {id:'tokyo',   n:'도쿄',    la:35.6812, ln:139.7671, bbox:[35.47,138.94,35.90,139.92]},
+  {id:'fukuoka', n:'후쿠오카',la:33.5902, ln:130.4017, bbox:[33.50,130.25,33.70,130.48]},
+  {id:'kyoto',   n:'교토',    la:34.9858, ln:135.7588, bbox:[34.87,135.55,35.32,135.88]},
+  {id:'sapporo', n:'삿포로',  la:43.0687, ln:141.3508, bbox:[42.95,141.20,43.15,141.50]},
+  {id:'naha',    n:'나하',    la:26.2124, ln:127.6809, bbox:[26.15,127.62,26.35,127.78]},
+  {id:'nagoya',  n:'나고야',  la:35.1709, ln:136.8815, bbox:[35.03,136.79,35.25,137.06]},
+  {id:'kobe',    n:'고베',    la:34.6913, ln:135.1955, bbox:[34.62,135.08,34.78,135.32]},
+  {id:'nara',    n:'나라',    la:34.6851, ln:135.8048, bbox:[34.63,135.77,34.72,135.92]},
+  {id:'yokohama',n:'요코하마',la:35.4437, ln:139.6380, bbox:[35.30,139.48,35.56,139.70]},
+];
+function cityOf(lat,lng){
+  return JP_CITIES.find(function(c){var b=c.bbox;return lat>=b[0]&&lat<=b[2]&&lng>=b[1]&&lng<=b[3];})||null;
+}
+var EXCLUDE_JP=['トイレ修理','水道','リフォーム','水漏れ','便器交換','清掃'];
+var VALID_JP=['トイレ','公衆','お手洗い','化粧室','restroom','toilet','화장실'];
+function isInvalidJP(name,addr,cat){
+  var s=(name||'')+' '+(addr||'')+' '+(cat||'');
+  if(EXCLUDE_JP.some(function(k){return s.indexOf(k)>-1;})) return true;
+  var hasValid=VALID_JP.some(function(k){
+    return (name||'').toLowerCase().indexOf(k.toLowerCase())>-1||(cat||'').toLowerCase().indexOf(k.toLowerCase())>-1;
+  });
+  return !hasValid;
+}
+
+// ── TW 존 테이블 ──────────────────────────────────────────
+var TW_ZONES=[
+  {id:'taipei',    n:'타이베이',    la:25.0478, ln:121.5170, bbox:[24.95,121.40,25.22,121.67]},
+  {id:'jiufen',    n:'지우펀·예류', la:25.1090, ln:121.8440, bbox:[25.00,121.65,25.25,121.95]},
+  {id:'taoyuan',   n:'타오위안',    la:24.9937, ln:121.3010, bbox:[24.90,121.15,25.12,121.40]},
+  {id:'taichung',  n:'타이중',      la:24.1439, ln:120.6844, bbox:[24.05,120.45,24.35,120.75]},
+  {id:'sunmoon',   n:'르웨탄',      la:23.8656, ln:120.9151, bbox:[23.80,120.85,23.95,121.00]},
+  {id:'tainan',    n:'타이난',      la:22.9917, ln:120.2000, bbox:[22.93,120.13,23.05,120.25]},
+  {id:'kaohsiung', n:'가오슝',      la:22.6273, ln:120.3014, bbox:[22.55,120.25,22.70,120.40]},
+  {id:'hualien',   n:'화롄',        la:23.9769, ln:121.6044, bbox:[23.90,121.45,24.20,121.65]},
+];
+function zoneOf(lat,lng){
+  return TW_ZONES.find(function(c){var b=c.bbox;return lat>=b[0]&&lat<=b[2]&&lng>=b[1]&&lng<=b[3];})||null;
+}
+var EXCLUDE_TW=['通馬桶','水電','衛浴設備','馬桶維修','清潔公司','衛浴'];
+var VALID_TW=['公廁','廁所','洗手間','化妝室','公共','toilet','restroom','화장실'];
+function isInvalidTW(name,addr,cat){
+  var s=(name||'')+' '+(addr||'')+' '+(cat||'');
+  if(EXCLUDE_TW.some(function(k){return s.indexOf(k)>-1;})) return true;
+  var hasValid=VALID_TW.some(function(k){
+    return (name||'').toLowerCase().indexOf(k.toLowerCase())>-1||(cat||'').toLowerCase().indexOf(k.toLowerCase())>-1;
+  });
+  return !hasValid;
+}
+function isInvalidAbroad(name,addr,cat){ return curCountry==='jp'?isInvalidJP(name,addr,cat):isInvalidTW(name,addr,cat); }
+function curCityOf(lat,lng){ return curCountry==='jp'?cityOf(lat,lng):(curCountry==='tw'?zoneOf(lat,lng):null); }
+
+// ── COUNTRIES: 국가 설정 단일 진실 공급원 ─────────────────
+var COUNTRIES={
+  jp:{ flag:'🇯🇵', name:'일본', dataFile:'./japan_toilets.json', region:'JP',
+       placesQueries:['公衆トイレ ','トイレ '],
+       bbox:[24.0,122.8,45.8,146.0],
+       defaultView:{la:35.6896,ln:139.7006,zoom:15},
+       toastIn:'🇯🇵 일본 모드로 전환됐어요' },
+  tw:{ flag:'🇹🇼', name:'대만', dataFile:'./taiwan_toilets.json', region:'TW',
+       placesQueries:['公廁 ','廁所 '],
+       bbox:[21.8,119.9,25.4,122.1],
+       defaultView:{la:25.0478,ln:121.5170,zoom:15},
+       toastIn:'🇹🇼 대만 모드로 전환됐어요' }
+};
+function CC(){ return COUNTRIES[curCountry]||null; }
+function isGoogleMap(){ return curCountry!=='kr' || curLang==='en'; }
+function countryOf(lat,lng){
+  if(lat>=33.0&&lat<=38.7&&lng>=124.5&&lng<=131.0) return 'kr';
+  var ks=Object.keys(COUNTRIES);
+  for(var i=0;i<ks.length;i++){
+    var b=COUNTRIES[ks[i]].bbox;
+    if(lat>=b[0]&&lng>=b[1]&&lat<=b[2]&&lng<=b[3]) return ks[i];
+  }
+  return null;
+}
+
+// ── 상태 ──────────────────────────────────────────────────
+var map=null, kakaoPs=null, kakaoGc=null;
+var myLat=37.4979, myLng=127.0276;
+var allData=[], markers=[], curFilter='all', myLocMarker=null;
+var publicData=null, curLocText='';
+var countryDataCache={};
+var googleLoadedLang=null;
+var _autoToasted={};
+
+// ── 언어 설정 (KR 전용) ────────────────────────────────────
+function setLang(lang){
+  if(curCountry!=='kr') return;
+  curLang=lang; T=LANG[lang];
+  updateToggleUI();
+  var url=new URL(location.href);
+  if(lang==='en') url.searchParams.set('lang','en');
+  else url.searchParams.delete('lang');
+  history.replaceState(null,'',url.toString());
+  renderLanding();
+}
+
+// ── 앱 내 언어 토글 (KR 전용, 지도 화면에서 실시간 전환) ─────
+function toggleLang(){
+  if(curCountry!=='kr') return;
+  var newLang=curLang==='ko'?'en':'ko';
+  curLang=newLang; T=LANG[newLang];
+  updateToggleUI();
+  var url=new URL(location.href);
+  if(newLang==='en') url.searchParams.set('lang','en');
+  else url.searchParams.delete('lang');
+  history.replaceState(null,'',url.toString());
+  applyUiText();
+  renderLanding();
+  if(document.getElementById('mapscreen').classList.contains('show')){
+    ensureGoogleLang(function(){ reinitMap(null,null); });
+  }
+  toast(newLang==='en'?'🌏 English mode':'🇰🇷 한국어 모드');
+}
+
+function updateToggleUI(){
+  document.querySelectorAll('.lang-toggle').forEach(function(wrap){
+    var track=wrap.querySelector('.lt-track');
+    var koLabel=wrap.querySelector('.lt-ko');
+    var enLabel=wrap.querySelector('.lt-en');
+    if(!track) return;
+    if(curLang==='en'){
+      track.classList.add('en');
+      if(koLabel)koLabel.classList.remove('active');
+      if(enLabel)enLabel.classList.add('active');
+    } else {
+      track.classList.remove('en');
+      if(koLabel)koLabel.classList.add('active');
+      if(enLabel)enLabel.classList.remove('active');
+    }
+  });
+}
+
+// ── Kakao 서비스 보장 (KR 전용) ──────────────────────────────
+function ensureKakaoServices(){
+  if(kakaoPs&&kakaoGc)return true;
+  if(window.kakao&&window.kakao.maps&&window.kakao.maps.services){
+    kakaoPs=new kakao.maps.services.Places();
+    kakaoGc=new kakao.maps.services.Geocoder();
+    return true;
+  }
+  return false;
+}
+
+// ── Google Maps 동적 로더 ────────────────────────────────
+function googleLangFor(){
+  if(curCountry!=='kr') return {l:'ko', r:CC().region};
+  if(curLang==='en') return {l:'en', r:'KR'};
+  return null; // kr-ko: Google 불필요(Kakao 사용)
+}
+function ensureGoogleLang(cb){
+  var want=googleLangFor();
+  if(!want){ cb(); return; }
+  if(window.google&&window.google.maps&&window.google.maps.Map&&googleLoadedLang===want.l){ cb(); return; }
+  if(googleLoadedLang && googleLoadedLang!==want.l){
+    // 이미 다른 language로 로드됨 — Maps JS API는 language를 런타임 변경 불가 → 1회 리로드
+    var url=new URL(location.href);
+    if(curCountry!=='kr') url.searchParams.set('country',curCountry); else url.searchParams.delete('country');
+    if(curLang==='en') url.searchParams.set('lang','en'); else url.searchParams.delete('lang');
+    location.replace(url.toString());
+    return;
+  }
+  window.__yamGmapsReady=function(){ googleLoadedLang=want.l; cb(); };
+  var s=document.createElement('script');
+  s.src='https://maps.googleapis.com/maps/api/js?key=AIzaSyAplYXuzjhjgi-f-M_zR3qahJ-KehNhD1g&libraries=places&language='+want.l+'&region='+want.r+'&callback=__yamGmapsReady';
+  s.async=true; s.defer=true;
+  document.head.appendChild(s);
+}
+
+// ── setCountry: 모든 국가 전환의 단일 수렴점 ──────────────
+function setCountry(cc,opts){
+  if(curCountry===cc) return;
+  curCountry=cc;
+  localStorage.setItem('yam_country',cc);
+  if(opts&&opts.manual) sessionStorage.setItem('yam_manual','1');
+  var url=new URL(location.href);
+  if(cc!=='kr') url.searchParams.set('country',cc); else url.searchParams.delete('country');
+  history.replaceState(null,'',url.toString());
+
+  document.body.classList.toggle('abroad', cc!=='kr');
+  if(cc!=='kr'){ T=LANG[cc]; curLang='ko'; }
+  else { curLang = curLang==='en'?'en':'ko'; T=LANG[curLang]; }
+
+  applyUiText();
+  updateToggleUI();
+  renderLanding();
+
+  if(document.getElementById('mapscreen').classList.contains('show')){
+    var jLat=null, jLng=null;
+    if(opts&&opts.manual){
+      if(cc==='kr'){ jLat=37.4979; jLng=127.0276; }
+      else { jLat=CC().defaultView.la; jLng=CC().defaultView.ln; }
+    } else if(opts&&opts.gpsLat!=null){
+      jLat=opts.gpsLat; jLng=opts.gpsLng; // GPS 자동 전환 — 현재 위치로 점프
+    }
+    ensureGoogleLang(function(){ reinitMap(jLat,jLng); });
+  }
+  if(!(opts&&opts.silent)) toast(cc!=='kr'?CC().toastIn:'🇰🇷 한국 모드로 돌아왔어요');
+}
+
+// ── GPS 자동 국가 전환 (수동 우선 매너 규칙) ──────────────
+function maybeAutoSwitch(lat,lng){
+  var cc=countryOf(lat,lng);
+  if(sessionStorage.getItem('yam_manual')) return cc; // 수동 선택 세션 — 전환은 안 하되 판정값은 반환
+  if(!cc||cc===curCountry) return cc;
+  var silent=!!_autoToasted[cc]; _autoToasted[cc]=true;
+  setCountry(cc,{silent:silent,gpsLat:lat,gpsLng:lng}); // 전환을 일으킨 GPS 좌표로 지도를 옮긴다 (시나리오 B: 현지 도착)
+  return cc;
+}
+
+// ── 랜딩 텍스트·카드 렌더 ──────────────────────────────────
+// 국가별 지도 실루엣 (단순화 — 일본: 홋카이도·혼슈 아치·시코쿠·규슈 / 대만: 고구마형 섬)
+var TRIP_SVG={
+  jp:'<path d="M66 14 C71 7 81 8 85 15 C89 21 86 29 79 31 C76 32 74 37 69 35 C63 32 62 25 64 20 Z"/>'+
+     '<path d="M78 38 C81 52 75 67 64 77 C54 87 42 94 30 98 C24 100 19 93 24 89 C35 84 45 78 53 69 C61 60 66 50 66 41 C66 34 76 31 78 38 Z"/>'+
+     '<path d="M40 103 C43 98 52 99 54 103 C55 108 49 111 44 110 C40 109 38 106 40 103 Z"/>'+
+     '<path d="M22 106 C26 101 33 103 34 109 C35 115 31 122 25 120 C20 118 19 111 22 106 Z"/>',
+  tw:'<path d="M56 18 C68 20 75 33 72 47 C70 63 64 79 56 95 C51 105 45 117 38 123 C31 128 25 121 27 112 C30 97 34 81 38 66 C42 51 44 36 50 24 C52 20 53 17 56 18 Z"/>'
+};
+function renderLanding(){
+  var hook=document.getElementById('land-hook'), sub=document.getElementById('land-sub'), cta=document.getElementById('land-cta');
+  if(hook) hook.innerHTML=T.title;
+  if(sub) sub.textContent=T.titleSub||'';
+  if(cta) cta.textContent=T.startBtn;
+  var trustLabel=document.getElementById('trust-label');
+  if(trustLabel) trustLabel.textContent=(curCountry==='kr'?T.trustLine:LANG.ko.trustLine)||'화장실 데이터';
+  var travelLabel=document.getElementById('land-travel-label');
+  var hint=document.getElementById('land-hint');
+  if(travelLabel) travelLabel.textContent = curCountry==='kr' ? '여행 중이세요?' : '다른 여행지도 있어요';
+  if(hint) hint.textContent = curCountry==='kr' ? '✨ 여행지에 도착하면 자동으로 전환돼요' : '✨ 국경을 넘으면 자동으로 전환돼요';
+  renderCountryCards();
+}
+function renderCountryCards(){
+  var el=document.getElementById('country-cards');
+  var travel=document.getElementById('land-travel');
+  if(!el||!travel) return;
+  if(curLang==='en'){ travel.style.display='none'; return; } // U6: 영어 UI에는 해외 카드 비표시
+  travel.style.display='';
+  var html='';
+  if(curCountry!=='kr'){
+    html+='<div class="trip-card kr-card glass" onclick="selectLanding(\'kr\')">'+
+          '<span class="trip-flag">🇰🇷</span><span class="trip-label">한국으로<br>돌아가기</span></div>';
+  }
+  Object.keys(COUNTRIES).forEach(function(cc){
+    if(cc===curCountry) return;
+    var c=COUNTRIES[cc];
+    html+='<div class="trip-card glass" onclick="selectLanding(\''+cc+'\')">'+
+          '<svg class="trip-svg" viewBox="0 0 100 140" aria-hidden="true">'+TRIP_SVG[cc]+'</svg>'+
+          '<span class="trip-flag">'+c.flag+'</span><span class="trip-label">'+c.name+'</span></div>';
+  });
+  el.innerHTML=html;
+}
+function selectLanding(cc){ setCountry(cc,{manual:true,silent:true}); startApp(); }
+
+// ── 지도 화면 UI 텍스트 반영 (공통) ────────────────────────
+function applyUiText(){
+  document.getElementById('srch-label').textContent=T.searchHint;
+  document.getElementById('fc-all').textContent=T.filterAll;
+  document.getElementById('fc-pub').textContent=T.filterPub;
+  document.getElementById('fc-opn').textContent=T.filterOpn;
+  document.getElementById('cnt-label').textContent=T.cntLabel;
+  document.getElementById('loading-txt').textContent=T.loading;
+  document.getElementById('srch-inp').placeholder=T.srchPlaceholder;
+  document.getElementById('leg-pub').textContent=T.legPub;
+  document.getElementById('leg-opn').textContent=T.legOpn;
+  document.getElementById('leg-goo').textContent=T.legGoo;
+  buildQuickPicks();
+}
+function buildQuickPicks(){
+  var wrap=document.getElementById('qp-wrap');
+  if(!wrap)return;
+  wrap.innerHTML='';
+  (T.qp||[]).forEach(function(q){
+    var b=document.createElement('button');b.className='qp';b.textContent=q;
+    b.onclick=function(){document.getElementById('srch-inp').value=q;doSearch();};
+    wrap.appendChild(b);
+  });
+}
+
+// ── 공공데이터 로드 (KR 전용) ──────────────────────────────
+function loadPublicData(cb){
+  if(publicData){cb();return;}
+  fetch('./toilets.json').then(function(r){return r.json();}).then(function(d){
+    publicData=d; console.log('공공데이터:',d.length+'개'); cb();
+  }).catch(function(){publicData=[];cb();});
+}
+// ── 해외(JP/TW) 번들 데이터 로드 ───────────────────────────
+function loadCountryData(cb){
+  var cc=curCountry;
+  if(countryDataCache[cc]&&countryDataCache[cc].length){cb();return;}
+  fetch(CC().dataFile).then(function(r){
+    if(!r.ok) throw new Error(r.status);
+    return r.json();
+  }).then(function(d){
+    countryDataCache[cc]=d; console.log(cc+'데이터:',d.length+'개'); cb();
+  }).catch(function(){ cb(); }); // 실패를 캐시하지 않음 — 다음 검색에서 재시도
+}
+
+// ── 시작 ──────────────────────────────────────────────────
+function startApp(){
+  document.getElementById('landing').classList.add('hide');
+  document.getElementById('mapscreen').classList.add('show');
+  if(curCountry==='kr') loadPublicData(function(){});
+  applyUiText();
+  updateToggleUI();
+  initMap();
+}
+
+// ── 지도 초기화 ────────────────────────────────────────────
+function initMap(){
+  var el=document.getElementById('kakaoMap');
+  if(isGoogleMap()){
+    ensureGoogleLang(function(){ googleInitMap(el); });
+  } else {
+    kakaoInitMap(el);
+  }
+}
+function googleInitMap(el){
+  ensureKakaoServices();
+  var view = curCountry==='kr' ? {lat:myLat,lng:myLng,zoom:18} : {lat:CC().defaultView.la,lng:CC().defaultView.ln,zoom:CC().defaultView.zoom};
+  if(curCountry!=='kr'){ myLat=view.lat; myLng=view.lng; }
+  var opts={center:{lat:view.lat,lng:view.lng},zoom:view.zoom,mapTypeControl:false,streetViewControl:false,fullscreenControl:false};
+  if(curCountry!=='kr'){ opts.gestureHandling='greedy'; opts.clickableIcons=false; }
+  map=new google.maps.Map(el,opts);
+  var rt=null;
+  function ar(){clearTimeout(rt);rt=setTimeout(function(){var c=map.getCenter();updateLoc(c.lat(),c.lng());searchNear(c.lat(),c.lng());},600);}
+  google.maps.event.addListener(map,'dragend',ar);
+  google.maps.event.addListener(map,'zoom_changed',ar);
+  goMyLoc();
+}
+function kakaoInitMap(el){
+  function initKakao(){
+    kakaoPs=new kakao.maps.services.Places();
+    kakaoGc=new kakao.maps.services.Geocoder();
+    map=new kakao.maps.Map(el,{center:new kakao.maps.LatLng(myLat,myLng),level:3});
+    map.addControl(new kakao.maps.ZoomControl(),kakao.maps.ControlPosition.RIGHT);
+    var rt=null;
+    function ar(){clearTimeout(rt);rt=setTimeout(function(){var c=map.getCenter();updateLoc(c.getLat(),c.getLng());searchNear(c.getLat(),c.getLng());},600);}
+    kakao.maps.event.addListener(map,'dragend',ar);
+    kakao.maps.event.addListener(map,'zoom_changed',ar);
+    goMyLoc();
+  }
+  var kakaoWait=setInterval(function(){
+    if(window.kakao&&window.kakao.maps&&window.kakao.maps.services){clearInterval(kakaoWait);initKakao();}
+  },100);
+}
+
+// ── 지도 재초기화 (언어 토글 / 국가 전환 시, 좌표 유지 또는 점프) ──
+function reinitMap(jLat,jLng){
+  var el=document.getElementById('kakaoMap');
+  clearMarkers();
+  if(myLocMarker){try{myLocMarker.setMap(null);}catch(e){} myLocMarker=null;}
+  var lat=jLat, lng=jLng, isManualJump=(jLat!=null&&jLng!=null);
+  if(!isManualJump){
+    lat=myLat; lng=myLng;
+    try{
+      if(map&&map.getCenter){
+        var c=map.getCenter();
+        if(c.getLat){lat=c.getLat();lng=c.getLng();}
+        else if(c.lat){lat=c.lat();lng=c.lng();}
+      }
+    }catch(e){}
+  }
+  myLat=lat; myLng=lng;
+  if(isGoogleMap()){
+    ensureGoogleLang(function(){
+      ensureKakaoServices();
+      el.innerHTML='';
+      var zoom=isManualJump?(CC()?CC().defaultView.zoom:15):18;
+      var opts={center:{lat:lat,lng:lng},zoom:zoom,mapTypeControl:false,streetViewControl:false,fullscreenControl:false};
+      if(curCountry!=='kr'){ opts.gestureHandling='greedy'; opts.clickableIcons=false; }
+      map=new google.maps.Map(el,opts);
+      var rt=null;
+      function ar(){clearTimeout(rt);rt=setTimeout(function(){var c=map.getCenter();updateLoc(c.lat(),c.lng());searchNear(c.lat(),c.lng());},600);}
+      google.maps.event.addListener(map,'dragend',ar);
+      google.maps.event.addListener(map,'zoom_changed',ar);
+      if(isManualJump){ goMyLoc(); } else { updateLoc(lat,lng); searchNear(lat,lng); }
+    });
+  } else {
+    kakaoPs=new kakao.maps.services.Places();
+    kakaoGc=new kakao.maps.services.Geocoder();
+    el.innerHTML='';
+    map=new kakao.maps.Map(el,{center:new kakao.maps.LatLng(lat,lng),level:3});
+    map.addControl(new kakao.maps.ZoomControl(),kakao.maps.ControlPosition.RIGHT);
+    var rt=null;
+    function ar(){clearTimeout(rt);rt=setTimeout(function(){var c=map.getCenter();updateLoc(c.getLat(),c.getLng());searchNear(c.getLat(),c.getLng());},600);}
+    kakao.maps.event.addListener(map,'dragend',ar);
+    kakao.maps.event.addListener(map,'zoom_changed',ar);
+    if(isManualJump){ goMyLoc(); } else { updateLoc(lat,lng); searchNear(lat,lng); }
+  }
+}
+function switchMap(){ reinitMap(null,null); } // 하위호환 별칭
+
+// ── 줌 ────────────────────────────────────────────────────
+function zoomIn(){if(!map)return;if(isGoogleMap())map.setZoom(map.getZoom()+1);else map.setLevel(map.getLevel()-1);}
+function zoomOut(){if(!map)return;if(isGoogleMap())map.setZoom(map.getZoom()-1);else map.setLevel(map.getLevel()+1);}
+
+// ── 내 위치 / GPS 처리 ──────────────────────────────────────
+function handleGps(lat,lng){
+  localStorage.setItem('yam_loc','1');
+  var before=curCountry;
+  var cc=maybeAutoSwitch(lat,lng);
+  if(curCountry!==before) return; // 국가 전환됨 — setCountry→reinitMap(goMyLoc) 체인이 이미 위치 반영
+  if(curCountry==='kr'){
+    myLat=lat; myLng=lng;
+    placeMyLocMarker(lat,lng);
+    updateLoc(myLat,myLng);
+    searchNear(myLat,myLng);
+  } else {
+    if(cc===curCountry){
+      var city=curCityOf(lat,lng);
+      if(curCountry==='jp'&&!city) toast(T.toastNoCity);
+      myLat=lat; myLng=lng;
+      map.setCenter({lat:lat,lng:lng}); map.setZoom(18);
+      placeMyLocMarker(lat,lng);
+      updateLoc(lat,lng);
+      searchNear(lat,lng);
+    } else {
+      if(curCountry==='tw') toast(T.toastOutTW);
+      fallbackDefault();
+    }
+  }
+}
+function goMyLoc(){
+  if(!map)return;
+  if(!navigator.geolocation){ if(curCountry==='kr'){searchNear(myLat,myLng);} else {fallbackDefault();} return; }
+  if(curCountry==='kr'){
+    var asked=localStorage.getItem('yam_loc');
+    if(!asked) toast(T.toastLoc);
+    navigator.geolocation.getCurrentPosition(function(pos){handleGps(pos.coords.latitude,pos.coords.longitude);},function(err){
+      if(err&&err.code===1){ onLocErrorFinal(err); return; }
+      navigator.geolocation.getCurrentPosition(function(pos){handleGps(pos.coords.latitude,pos.coords.longitude);},onLocErrorFinal,{timeout:10000,enableHighAccuracy:false,maximumAge:300000});
+    },{timeout:15000,enableHighAccuracy:true,maximumAge:60000});
+  } else {
+    navigator.geolocation.getCurrentPosition(function(pos){handleGps(pos.coords.latitude,pos.coords.longitude);},function(){
+      toast(T.toastNoLoc);
+      fallbackDefault();
+    },{timeout:8000,enableHighAccuracy:true,maximumAge:60000});
+  }
+}
+function onLocErrorFinal(err){
+  if(err&&err.code===1){ toast(T.toastNoLoc); } else { toast(T.toastLocWeak); }
+  searchNear(myLat,myLng);
+}
+function fallbackDefault(){
+  if(curCountry==='kr')return;
+  var dv=CC().defaultView;
+  myLat=dv.la; myLng=dv.ln;
+  if(map){ map.setCenter({lat:myLat,lng:myLng}); map.setZoom(dv.zoom); }
+  updateLoc(myLat,myLng);
+  searchNear(myLat,myLng);
+}
+function placeMyLocMarker(lat,lng){
+  if(myLocMarker){try{myLocMarker.setMap(null);}catch(e){} myLocMarker=null;}
+  if(isGoogleMap()){
+    myLocMarker=new google.maps.Marker({position:{lat:lat,lng:lng},map:map,icon:{path:google.maps.SymbolPath.CIRCLE,scale:8,fillColor:'#00754A',fillOpacity:1,strokeColor:'white',strokeWeight:3}});
+  } else {
+    myLocMarker=new kakao.maps.CustomOverlay({map:map,position:new kakao.maps.LatLng(lat,lng),zIndex:10,content:'<div style="width:16px;height:16px;border-radius:50%;background:#00754A;border:3px solid white;box-shadow:0 2px 8px rgba(0,117,74,0.5);margin:-8px 0 0 -8px;"></div>'});
+  }
+}
+
+// ── 역지오코딩 ─────────────────────────────────────────────
+function updateLoc(lat,lng){
+  if(curCountry==='kr'){
+    if(curLang==='en'){
+      if(!window.google||!window.google.maps)return;
+      new google.maps.Geocoder().geocode({location:{lat:lat,lng:lng},language:'en'},function(res,st){
+        if(st==='OK'&&res[0]){
+          var parts=res[0].address_components;
+          var sub=parts.find(function(p){return p.types.indexOf('sublocality_level_1')>-1;});
+          var city=parts.find(function(p){return p.types.indexOf('locality')>-1;});
+          curLocText=(sub?sub.long_name:'')+(city?' '+city.long_name:'');
+          document.getElementById('loc-txt').textContent=curLocText||res[0].formatted_address.split(',')[0];
+          document.getElementById('loc-pill').classList.add('show');
+        }
+      });
+    } else {
+      if(!kakaoGc)return;
+      kakaoGc.coord2RegionCode(lng,lat,function(res,st){
+        if(st!==kakao.maps.services.Status.OK)return;
+        var d=res.find(function(r){return r.region_type==='H';})||res.find(function(r){return r.region_type==='B';});
+        if(!d)return;
+        curLocText=d.region_2depth_name+' '+d.region_3depth_name;
+        document.getElementById('loc-txt').textContent=curLocText;
+        document.getElementById('loc-pill').classList.add('show');
+      });
+    }
+  } else {
+    if(!window.google||!window.google.maps)return;
+    new google.maps.Geocoder().geocode({location:{lat:lat,lng:lng},language:'ko'},function(res,st){
+      if(st==='OK'&&res[0]){
+        var parts=res[0].address_components;
+        var sub=parts.find(function(p){return p.types.indexOf('sublocality_level_1')>-1;});
+        var city=parts.find(function(p){return p.types.indexOf('locality')>-1;});
+        curLocText=(sub?sub.long_name:'')+(city?' '+city.long_name:'');
+        var jc=curCityOf(lat,lng);
+        var disp=(jc?jc.n+(sub?' · '+sub.long_name:''):curLocText)||res[0].formatted_address.split(',')[0];
+        document.getElementById('loc-txt').textContent=disp;
+        document.getElementById('loc-pill').classList.add('show');
+      }
+    });
+  }
+}
+
+// ── 화장실 검색 ────────────────────────────────────────────
+function searchNear(lat,lng){
+  if(curCountry==='kr'){
+    searchNearKR(lat,lng);
+  } else {
+    setLoad(true); clearMarkers(); allData=[];
+    loadCountryData(function(){
+      addCountryBundle(lat,lng);
+      addGooglePlacesAbroad(lat,lng,function(){ finishSearch(); });
+    });
+  }
+}
+
+function searchNearKR(lat,lng){
+  if(curLang!=='en'&&!kakaoPs){setTimeout(function(){searchNearKR(lat,lng);},200);return;}
+  setLoad(true); clearMarkers(); allData=[];
+  var radius=800;
+
+  function isDupKR(y,x){
+    return allData.find(function(r){return calcDist(parseFloat(y),parseFloat(x),parseFloat(r.p.y||0),parseFloat(r.p.x||0))<20;});
+  }
+
+  function addKakao(p,type){
+    var addr=p.road_address_name||p.address_name||'';
+    if(isInvalid(p.place_name,addr,p.category_name||''))return;
+    if(isDupKR(p.y,p.x))return;
+    allData.push({p:p,t:type,src:'kakao'});
+  }
+
+  function addPublic(){
+    if(!publicData||!publicData.length)return;
+    publicData.forEach(function(item){
+      var dist=calcDist(lat,lng,item.la,item.ln);
+      if(dist>radius)return;
+      if(isInvalid(item.n,item.a,item.t))return;
+      if(isDupKR(item.la,item.ln))return;
+      var t=item.t&&item.t.indexOf('개방')>-1?'open':'public';
+      allData.push({
+        p:{place_name:item.n||'공중화장실',road_address_name:item.a||'',address_name:item.a||'',phone:item.p||'',y:item.la,x:item.ln,distance:dist},
+        t:t,src:'public',h:item.h||''
+      });
+    });
+  }
+
+  function addGooglePlaces(cb){
+    if(!window.google||!window.google.maps){cb();return;}
+    google.maps.importLibrary('places').then(function(lib){
+      var Place=lib.Place;
+      var locText=curLocText||'';
+      var queries=['개방화장실 '+locText,'열린화장실 '+locText,'공중화장실 '+locText];
+      var done=0;
+      queries.forEach(function(q){
+        Place.searchByText({
+          fields:['displayName','formattedAddress','location'],
+          textQuery:q.trim(),
+          language:'ko'
+        }).then(function(res){
+          (res.places||[]).forEach(function(place){
+            if(!place.location)return;
+            var pLat=place.location.lat(), pLng=place.location.lng();
+            var dist=calcDist(lat,lng,pLat,pLng);
+            if(dist>radius)return;
+            if(isDupKR(pLat,pLng))return;
+            allData.push({
+              p:{place_name:place.displayName||'개방화장실',road_address_name:place.formattedAddress||'',address_name:place.formattedAddress||'',phone:'',y:pLat,x:pLng,distance:dist},
+              t:'open',src:'google'
+            });
+          });
+          done++;
+          if(done>=queries.length)cb();
+        }).catch(function(){done++;if(done>=queries.length)cb();});
+      });
+    }).catch(function(){cb();});
+  }
+
+  var searches=[
+    {kw:'공중화장실',t:'public'},{kw:'개방화장실',t:'open'},
+    {kw:'화장실',t:'open'},{kw:'무료화장실',t:'open'},
+    {kw:'공중 화장실',t:'public'},{kw:'개방 화장실',t:'open'},
+  ];
+  var total=searches.length, done=0;
+  if(curLang==='en'){
+    addPublic();
+    addGooglePlaces(function(){ finishSearch(); });
+    return;
+  }
+
+  var kakaoCenter=new kakao.maps.LatLng(lat,lng);
+  var opt={location:kakaoCenter,radius:radius,size:15,sort:kakao.maps.services.SortBy.DISTANCE};
+
+  searches.forEach(function(s){
+    kakaoPs.keywordSearch(s.kw,function(data,st){
+      if(st===kakao.maps.services.Status.OK) data.forEach(function(p){addKakao(p,s.t);});
+      done++;
+      if(done>=total){
+        addPublic();
+        addGooglePlaces(function(){ finishSearch(); });
+      }
+    },opt);
+  });
+}
+
+// ── 해외(JP/TW) 번들 + Google Places ───────────────────────
+function isDup(y,x){
+  return allData.find(function(r){return calcDist(parseFloat(y),parseFloat(x),parseFloat(r.p.y||0),parseFloat(r.p.x||0))<30;});
+}
+function addCountryBundle(lat,lng){
+  var data=countryDataCache[curCountry];
+  if(!data||!data.length)return;
+  var radius=800;
+  data.forEach(function(item){
+    var dist=calcDist(lat,lng,item.la,item.ln);
+    if(dist>radius)return;
+    if(isDup(item.la,item.ln))return;
+    var t=item.t&&item.t.indexOf('개방')>-1?'open':'public';
+    if(curCountry==='jp'){
+      allData.push({
+        p:{place_name:item.n||'화장실',road_address_name:item.a||'',address_name:item.a||'',phone:item.p||'',y:item.la,x:item.ln,distance:dist},
+        t:t, src:item.s==='city'?'jpcity':'osm', h:item.h||'', f:item.f||null
+      });
+    } else {
+      allData.push({
+        p:{place_name:item.k||item.n||'화장실',road_address_name:item.b||item.a||'',address_name:item.b||item.a||'',phone:item.p||'',y:item.la,x:item.ln,distance:dist},
+        t:t, src:item.s==='gov'?'twgov':'osm', h:item.h||'', f:item.f||null,
+        g:item.g||0, o:item.n||'', oa:item.a||''
+      });
+    }
+  });
+}
+function addGooglePlacesAbroad(lat,lng,cb){
+  if(!window.google||!window.google.maps){cb();return;}
+  var radius=800, cc=CC();
+  google.maps.importLibrary('places').then(function(lib){
+    var Place=lib.Place;
+    var locText=curLocText||'';
+    var queries=cc.placesQueries.map(function(q){return q+locText;});
+    var done=0;
+    queries.forEach(function(q){
+      Place.searchByText({
+        fields:['displayName','formattedAddress','location'],
+        textQuery:q.trim(),
+        language:'ko'
+      }).then(function(res){
+        (res.places||[]).forEach(function(place){
+          if(!place.location)return;
+          var pLat=place.location.lat(), pLng=place.location.lng();
+          var dist=calcDist(lat,lng,pLat,pLng);
+          if(dist>radius)return;
+          var name=place.displayName||'', addr=place.formattedAddress||'';
+          if(isInvalidAbroad(name,addr,''))return;
+          if(isDup(pLat,pLng))return;
+          if(curCountry==='jp'){
+            allData.push({
+              p:{place_name:name||'화장실',road_address_name:addr,address_name:addr,phone:'',y:pLat,x:pLng,distance:dist},
+              t:'open', src:'google'
+            });
+          } else {
+            var nameKo=translateToKoTW(name);
+            allData.push({
+              p:{place_name:nameKo||'화장실',road_address_name:addr,address_name:addr,phone:'',y:pLat,x:pLng,distance:dist},
+              t:'open', src:'google', o:name, oa:addr
+            });
+          }
+        });
+        done++;
+        if(done>=queries.length)cb();
+      }).catch(function(){done++;if(done>=queries.length)cb();});
+    });
+  }).catch(function(){cb();});
+}
+function finishSearch(){
+  setLoad(false);
+  allData.sort(function(a,b){return parseInt(a.p.distance||0)-parseInt(b.p.distance||0);});
+  renderMarkers();
+  var n=getFilt().length;
+  document.getElementById('cnt').textContent=n;
+  document.getElementById('count-pill').classList.toggle('show',n>0);
+  if(n===0) toast(T.toastNone);
+}
+
+// ── 마커 렌더링 (공통, Kakao/Google 분기) ────────────────────
+function renderMarkers(){
+  clearMarkers();
+  getFilt().forEach(function(r,i){
+    var isPub=r.t==='public', isGoo=r.src==='google';
+    var cls=isGoo?'cm cm-goo':isPub?'cm cm-pub':'cm cm-opn';
+    var icon=isPub?'🚻':'🏢';
+    var dist=parseInt(r.p.distance||0);
+    var name=esc(dispName(r.p.place_name));
+    var distTag=dist?'<span style="font-size:10px;padding:1px 6px;border-radius:50px;background:'+(isGoo?'#faf0d8':isPub?'#dbeeff':'#d4e9e2')+';margin-left:2px;">'+dist+'m</span>':'';
+    var content='<div class="'+cls+'" onclick="openDetail('+i+')">'+icon+' '+name+distTag+'</div>';
+
+    if(isGoogleMap()){
+      var ov=new google.maps.OverlayView();
+      (function(r2,idx,content2){
+        ov.onAdd=function(){
+          var div=document.createElement('div');
+          div.innerHTML=content2;
+          div.style.cssText='position:absolute;cursor:pointer;white-space:nowrap;transform:translate(-50%,-100%);margin-top:-8px;';
+          div.onclick=function(){openDetail(idx);};
+          ov._div=div;
+          ov.getPanes().overlayMouseTarget.appendChild(div);
+        };
+        ov.draw=function(){
+          var pt=ov.getProjection().fromLatLngToDivPixel(new google.maps.LatLng(parseFloat(r2.p.y),parseFloat(r2.p.x)));
+          if(pt&&ov._div){ov._div.style.left=pt.x+'px';ov._div.style.top=pt.y+'px';}
+        };
+        ov.onRemove=function(){if(ov._div){ov._div.parentNode.removeChild(ov._div);ov._div=null;}};
+        ov.setMap(map);
+        markers.push(ov);
+      })(r,i,content);
+    } else {
+      var ov=new kakao.maps.CustomOverlay({map:map,position:new kakao.maps.LatLng(r.p.y,r.p.x),content:content,yAnchor:1.5,zIndex:3});
+      markers.push(ov);
+    }
+  });
+}
+function getFilt(){
+  if(curFilter==='all')return allData;
+  return allData.filter(function(r){return r.t===curFilter;});
+}
+function clearMarkers(){markers.forEach(function(m){m.setMap(null);});markers=[];}
+
+// ── 필터 ──────────────────────────────────────────────────
+function setFilter(f){
+  curFilter=f;
+  ['all','pub','opn'].forEach(function(k){document.getElementById('fc-'+k).classList.remove('on');});
+  document.getElementById(f==='all'?'fc-all':f==='public'?'fc-pub':'fc-opn').classList.add('on');
+  renderMarkers();
+  var n=getFilt().length;
+  document.getElementById('cnt').textContent=n;
+  document.getElementById('count-pill').classList.toggle('show',n>0);
+}
+
+// ── 상세 시트 ──────────────────────────────────────────────
+function openDetail(i){
+  var r=getFilt()[i]; if(!r)return;
+  var p=r.p, isPub=r.t==='public', isGoo=r.src==='google';
+
+  if(curCountry==='kr'){
+    var name=esc(translateToEn(p.place_name));
+    var addrRaw=translateToEn(p.road_address_name||p.address_name||'주소 정보 없음');
+    var addr=esc(addrRaw);
+    var addrEnc=encodeURIComponent(addrRaw).replace(/'/g,'%27');
+    var dist=parseInt(p.distance||0);
+    var src=r.src==='public'?T.srcPublic:r.src==='google'?T.srcGoogle:T.srcKakao;
+    var typeLabel=isGoo?T.detGoogle:isPub?T.detPublic:T.detOpen;
+    var badgeCls=isGoo?'b-goo':isPub?'b-pub':'b-opn';
+    var openHour=r.h&&r.h!=='nan'?esc(r.h):'';
+    var appleUrl='https://maps.apple.com/?ll='+p.y+','+p.x+'&q='+encodeURIComponent(p.place_name);
+    var kakaoUrl='https://map.kakao.com/link/to/'+encodeURIComponent(p.place_name)+','+p.y+','+p.x;
+    var naverUrl='https://map.naver.com/v5/search/'+encodeURIComponent(p.place_name);
+    var walkLabel=dist<100?T.detNear:dist<300?T.detClose:T.detWalkable;
+    document.getElementById('sheet-body').innerHTML=
+      '<div class="det-type">'+typeLabel+'</div>'+
+      '<div class="det-name">'+name+'</div>'+
+      '<div class="det-addr">'+addr+'</div>'+
+      (dist?'<div class="dist-card"><div><div style="font-size:11px;color:rgba(0,0,0,0.4);margin-bottom:2px;">'+T.detFrom+'</div><div class="dist-num">'+dist+'m</div></div><div class="dist-right"><div style="font-size:20px;margin-bottom:2px;">🚶</div><div class="dist-walk">'+walkLabel+'</div><div class="dist-min">~'+Math.ceil(dist/60)+T.detWalk+'</div></div></div>':'')+
+      '<div class="badges"><span class="badge '+badgeCls+'">'+typeLabel+'</span><span class="badge b-free">'+T.detFree+'</span></div>'+
+      '<div class="info-row"><div class="ii">📌</div><div class="il">'+T.detAddr+'</div><div class="iv">'+addr+'</div></div>'+
+      (openHour?'<div class="info-row"><div class="ii">🕐</div><div class="il">Hours</div><div class="iv">'+openHour+'</div></div>':'')+
+      (p.phone&&p.phone!=='nan'?'<div class="info-row"><div class="ii">📞</div><div class="il">'+T.detPhone+'</div><div class="iv">'+esc(p.phone)+'</div></div>':'')+
+      '<div class="info-row"><div class="ii">ℹ️</div><div class="il">'+T.detSrc+'</div><div class="iv">'+src+'</div></div>'+
+      '<div class="acts">'+
+      '<button class="act a-apple" onclick="window.open(\''+appleUrl+'\',\'_blank\')">'+T.detApple+'</button>'+
+      '<button class="act a-kakao" onclick="window.open(\''+kakaoUrl+'\',\'_blank\')">'+T.detKakao+'</button>'+
+      '<button class="act a-naver" onclick="window.open(\''+naverUrl+'\',\'_blank\')">'+T.detNaver+'</button>'+
+      '<button class="act a-copy" onclick="navigator.clipboard.writeText(decodeURIComponent(\''+addrEnc+'\')).then(function(){toast(T.detCopied)})">'+T.detCopy+'</button>'+
+      '</div>';
+    document.getElementById('overlay').classList.add('on');
+    document.getElementById('sheet').classList.add('on');
+    if(curLang==='en') map.panTo({lat:parseFloat(p.y),lng:parseFloat(p.x)});
+    else map.panTo(new kakao.maps.LatLng(p.y,p.x));
+    return;
+  }
+
+  // ── 해외(JP/TW) 상세 시트 ──
+  var nameDisp, showOrigLabel, origText;
+  if(curCountry==='jp'){
+    var nameKo=translateToKoJP(p.place_name);
+    nameDisp=nameKo; showOrigLabel=(nameKo!==p.place_name); origText=p.place_name;
+  } else {
+    nameDisp=p.place_name; showOrigLabel=!!(r.o&&r.o!==p.place_name); origText=r.o;
+  }
+  var name=esc(nameDisp);
+  var addrRaw=p.road_address_name||p.address_name||'주소 정보 없음';
+  var addr=esc(addrRaw);
+  var copySourceRaw = curCountry==='tw' ? (r.oa||p.road_address_name||p.address_name||'') : addrRaw;
+  var addrEnc=encodeURIComponent(copySourceRaw).replace(/'/g,'%27');
+  var hasCopyTarget = curCountry==='tw' ? !!(p.road_address_name||p.address_name||r.oa) : !!(p.road_address_name||p.address_name);
+  var dist=parseInt(p.distance||0);
+  var src = curCountry==='jp'
+      ? (r.src==='osm'?T.srcOsm:r.src==='google'?T.srcGoogle:r.src==='jpcity'?T.srcCity:'')
+      : (r.src==='osm'?T.srcOsm:r.src==='google'?T.srcGoogle:r.src==='twgov'?T.srcGov:'');
+  var typeLabel=isGoo?T.detGoogle:isPub?T.detPublic:T.detOpen;
+  var badgeCls=isGoo?'b-goo':isPub?'b-pub':'b-opn';
+  var openHour=r.h&&r.h!=='nan'?esc(r.h):'';
+  var appleUrl='https://maps.apple.com/?ll='+p.y+','+p.x+'&q='+encodeURIComponent(p.place_name);
+  var gmapDirUrl='https://www.google.com/maps/dir/?api=1&destination='+p.y+','+p.x+'&travelmode=walking';
+  var walkLabel=dist<100?T.detNear:dist<300?T.detClose:T.detWalkable;
+
+  var facBadges='';
+  if(curCountry==='tw'){
+    if(r.g===1) facBadges+='<span class="badge badge-grade">'+T.gradeTop+'</span>';
+    else if(r.g===2) facBadges+='<span class="badge badge-grade">'+T.gradeGood+'</span>';
+  }
+  if(r.f){
+    if(r.f.wc) facBadges+='<span class="badge b-fac">'+T.facWc+'</span>';
+    if(r.f.ba) facBadges+='<span class="badge b-fac">'+T.facBa+'</span>';
+    if(r.f.os) facBadges+='<span class="badge b-fac">'+T.facOs+'</span>';
+  }
+  var flagIcon = curCountry==='jp'?'🇯🇵':'🇹🇼';
+  var origLabelPrefix = curCountry==='jp' ? (flagIcon+' ') : (flagIcon+' 원문 ');
+  var copyBtn = hasCopyTarget
+      ? '<button class="act a-copy" onclick="navigator.clipboard.writeText(decodeURIComponent(\''+addrEnc+'\')).then(function(){toast(T.detCopied)})">'+T.detCopy+'</button>' : '';
+
+  document.getElementById('sheet-body').innerHTML=
+    '<div class="det-type">'+typeLabel+'</div>'+
+    '<div class="det-name">'+name+'</div>'+
+    (showOrigLabel?'<div class="det-jp">'+origLabelPrefix+esc(origText)+'</div>':'')+
+    '<div class="det-addr">'+addr+'</div>'+
+    (dist?'<div class="dist-card"><div><div style="font-size:11px;color:rgba(0,0,0,0.4);margin-bottom:2px;">'+T.detFrom+'</div><div class="dist-num">'+dist+'m</div></div><div class="dist-right"><div style="font-size:20px;margin-bottom:2px;">🚶</div><div class="dist-walk">'+walkLabel+'</div><div class="dist-min">~'+Math.ceil(dist/60)+T.detWalk+'</div></div></div>':'')+
+    '<div class="badges"><span class="badge '+badgeCls+'">'+typeLabel+'</span><span class="badge b-free">'+T.detFree+'</span>'+facBadges+'</div>'+
+    '<div class="info-row"><div class="ii">📌</div><div class="il">'+T.detAddr+'</div><div class="iv">'+addr+'</div></div>'+
+    (openHour?'<div class="info-row"><div class="ii">🕐</div><div class="il">시간</div><div class="iv">'+openHour+'</div></div>':'')+
+    (p.phone&&p.phone!=='nan'?'<div class="info-row"><div class="ii">📞</div><div class="il">'+T.detPhone+'</div><div class="iv">'+esc(p.phone)+'</div></div>':'')+
+    '<div class="info-row"><div class="ii">ℹ️</div><div class="il">'+T.detSrc+'</div><div class="iv">'+src+'</div></div>'+
+    '<div class="acts">'+
+    '<button class="act a-gmap" onclick="window.open(\''+gmapDirUrl+'\',\'_blank\')">'+T.detGoogleDir+'</button>'+
+    '<button class="act a-apple" onclick="window.open(\''+appleUrl+'\',\'_blank\')">'+T.detApple+'</button>'+
+    copyBtn+
+    '</div>';
+  document.getElementById('overlay').classList.add('on');
+  document.getElementById('sheet').classList.add('on');
+  map.panTo({lat:parseFloat(p.y),lng:parseFloat(p.x)});
+}
+function closeSheet(){
+  document.getElementById('overlay').classList.remove('on');
+  document.getElementById('sheet').classList.remove('on');
+}
+
+// ── 출처 시트 (3개국 통합) ──────────────────────────────────
+function openSources(){
+  document.getElementById('sheet-body').innerHTML=
+    '<div class="det-type">DATA SOURCE</div>'+
+    '<div class="det-name">데이터 출처</div>'+
+    '<div class="info-row"><div class="ii">🇰🇷</div><div class="il">한국</div><div class="iv">행정안전부 공공데이터포털 「전국 공중화장실 위치정보」</div></div>'+
+    '<div class="info-row"><div class="ii">🇯🇵</div><div class="il">일본</div><div class="iv">© OpenStreetMap contributors (ODbL)</div></div>'+
+    '<div class="info-row"><div class="ii">🇹🇼</div><div class="il">대만</div><div class="iv">環境部 環境管理署 「全國公廁建檔資料」 · 政府資料開放授權條款 v1 + © OpenStreetMap contributors (ODbL)</div></div>'+
+    '<div class="info-row"><div class="ii">🔍</div><div class="il">Google</div><div class="iv">일부 결과는 Google 검색 결과를 포함합니다</div></div>';
+  document.getElementById('overlay').classList.add('on');
+  document.getElementById('sheet').classList.add('on');
+}
+
+// ── 검색 ──────────────────────────────────────────────────
+function openSrch(){document.getElementById('srch').classList.add('show');setTimeout(function(){document.getElementById('srch-inp').focus();},100);}
+function closeSrch(){document.getElementById('srch').classList.remove('show');}
+function doSearch(){
+  var q=document.getElementById('srch-inp').value.trim();
+  if(!q){toast(T.toastNoQ);return;}
+  document.getElementById('srch-label').textContent=q;
+  closeSrch();
+  if(curCountry==='kr'){
+    if(!ensureKakaoServices()){toast(T.toastNoRes);return;}
+    kakaoPs.keywordSearch(q,function(data,st){
+      if(st===kakao.maps.services.Status.OK){
+        var lat=parseFloat(data[0].y), lng=parseFloat(data[0].x);
+        if(curLang==='en'){map.setCenter({lat:lat,lng:lng});map.setZoom(18);}
+        else{map.setCenter(new kakao.maps.LatLng(lat,lng));map.setLevel(3);}
+        updateLoc(lat,lng);
+        searchNear(lat,lng);
+      } else toast(T.toastNoRes);
+    });
+  } else {
+    if(!window.google||!window.google.maps){toast(T.toastNoRes);return;}
+    new google.maps.Geocoder().geocode({address:q,region:CC().region,language:'ko'},function(res,st){
+      if(st==='OK'&&res[0]){
+        var loc=res[0].geometry.location;
+        map.setCenter(loc); map.setZoom(17);
+        updateLoc(loc.lat(),loc.lng());
+        searchNear(loc.lat(),loc.lng());
+      } else toast(T.toastNoRes);
+    });
+  }
+}
+
+// ── DOMContentLoaded ───────────────────────────────────────
+document.addEventListener('DOMContentLoaded',function(){
+  document.body.classList.toggle('abroad', curCountry!=='kr');
+  updateToggleUI();
+  renderLanding();
+  document.getElementById('srch-inp').addEventListener('keydown',function(e){if(e.key==='Enter')doSearch();});
+  if('serviceWorker' in navigator){
+    var swRefreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function(){
+      if(swRefreshing) return;
+      swRefreshing = true;
+      window.location.reload();
+    });
+    navigator.serviceWorker.register('/sw.js')
+      .then(function(r){
+        console.log('SW:',r.scope);
+        r.update();
+        setInterval(function(){ r.update(); }, 30*60*1000);
+      })
+      .catch(function(){});
+  }
+});
+</script>
+</body>
+</html>
