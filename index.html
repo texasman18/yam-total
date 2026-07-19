@@ -7,7 +7,7 @@
   <link rel="icon" href="icon.png" type="image/png">
   <link rel="shortcut icon" href="icon.png" type="image/png">
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#00754A">
+  <meta name="theme-color" content="#ff385c">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -166,8 +166,8 @@
     .cm::after{content:'';position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-width:6px;border-top-style:solid;}
     .cm-pub{border-color:#2563eb;color:#2563eb;}
     .cm-pub::after{border-top-color:#2563eb;}
-    .cm-opn{border-color:#00754A;color:#006241;}
-    .cm-opn::after{border-top-color:#00754A;}
+    .cm-opn{border-color:#ff385c;color:#c13515;}
+    .cm-opn::after{border-top-color:#ff385c;}
     .cm-goo{border-color:#cba258;color:#8a6f2e;}
     .cm-goo::after{border-top-color:#cba258;}
 
@@ -235,7 +235,7 @@
   <div class="orb orb1"></div>
   <div class="orb orb2"></div>
   <div class="landing-inner">
-    <div class="logo-wrap"><img src="icon.png" alt="얌" onerror="this.parentElement.style.background='linear-gradient(135deg,#00754A,#1E3932)'"></div>
+    <div class="logo-wrap"><img src="icon.png" alt="얌" onerror="this.parentElement.style.background='linear-gradient(135deg,#ff385c,#e00b41)'"></div>
     <div class="tagline">REAL-TIME TOILET FINDER</div>
     <h1 class="landing-title" id="l-title">급할 때<br><span class="hi">가장 먼저</span><br>찾는 앱</h1>
     <div class="lang-btns">
@@ -260,7 +260,7 @@
 <div id="mapscreen">
   <div id="kakaoMap"></div>
   <div class="topbar">
-    <div class="logo-sm"><img src="icon.png" alt="얌" onerror="this.parentElement.style.background='linear-gradient(135deg,#00754A,#1E3932)'"></div>
+    <div class="logo-sm"><img src="icon.png" alt="얌" onerror="this.parentElement.style.background='linear-gradient(135deg,#ff385c,#e00b41)'"></div>
     <div class="search-box" onclick="openSrch()"><span>🔍</span><span id="srch-label">지역명 또는 주소 검색</span></div>
     <div class="lang-toggle" onclick="toggleLang()" title="언어 변경">
       <span class="lt-ko" id="lt-ko">🇰🇷</span>
@@ -1149,6 +1149,7 @@ function goMyLoc(){
 }
 function onLocErrorFinal(err){
   if(err&&err.code===1){ toast(T.toastNoLoc); } else { toast(T.toastLocWeak); }
+  updateLoc(myLat,myLng); // 위치 필 갱신 — 해외에서 복귀 직후 이전 국가 지명이 남는 문제 방지
   searchNear(myLat,myLng);
 }
 function fallbackDefault(){
@@ -1162,9 +1163,9 @@ function fallbackDefault(){
 function placeMyLocMarker(lat,lng){
   if(myLocMarker){try{myLocMarker.setMap(null);}catch(e){} myLocMarker=null;}
   if(isGoogleMap()){
-    myLocMarker=new google.maps.Marker({position:{lat:lat,lng:lng},map:map,icon:{path:google.maps.SymbolPath.CIRCLE,scale:8,fillColor:'#00754A',fillOpacity:1,strokeColor:'white',strokeWeight:3}});
+    myLocMarker=new google.maps.Marker({position:{lat:lat,lng:lng},map:map,icon:{path:google.maps.SymbolPath.CIRCLE,scale:8,fillColor:'#ff385c',fillOpacity:1,strokeColor:'white',strokeWeight:3}});
   } else {
-    myLocMarker=new kakao.maps.CustomOverlay({map:map,position:new kakao.maps.LatLng(lat,lng),zIndex:10,content:'<div style="width:16px;height:16px;border-radius:50%;background:#00754A;border:3px solid white;box-shadow:0 2px 8px rgba(0,117,74,0.5);margin:-8px 0 0 -8px;"></div>'});
+    myLocMarker=new kakao.maps.CustomOverlay({map:map,position:new kakao.maps.LatLng(lat,lng),zIndex:10,content:'<div style="width:16px;height:16px;border-radius:50%;background:#ff385c;border:3px solid white;box-shadow:0 2px 8px rgba(255,56,92,0.5);margin:-8px 0 0 -8px;"></div>'});
   }
 }
 
