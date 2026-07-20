@@ -753,7 +753,7 @@ function countryOf(lat,lng){
 // ── 상태 ──────────────────────────────────────────────────
 var map=null, kakaoPs=null, kakaoGc=null;
 var myLat=37.4979, myLng=127.0276;
-var allData=[], markers=[], curFilter='all', myLocMarker=null;
+var allData=[], markers=[], curFilter='all', myLocMarker=null, gpsWatchId=null;
 var publicData=null, curLocText='';
 var countryDataCache={};
 var googleLoadedLang=null;
@@ -1018,6 +1018,7 @@ function initMap(){
   } else {
     kakaoInitMap(el);
   }
+  startGpsWatch();
 }
 function googleInitMap(el){
   ensureKakaoServices();
@@ -1159,6 +1160,12 @@ function fallbackDefault(){
   if(map){ map.setCenter({lat:myLat,lng:myLng}); map.setZoom(dv.zoom); }
   updateLoc(myLat,myLng);
   searchNear(myLat,myLng);
+}
+function startGpsWatch(){
+  if(gpsWatchId!==null || !navigator.geolocation) return;
+  gpsWatchId=navigator.geolocation.watchPosition(function(pos){
+    if(map) placeMyLocMarker(pos.coords.latitude, pos.coords.longitude);
+  }, function(err){}, {enableHighAccuracy:true, maximumAge:5000, timeout:10000});
 }
 function placeMyLocMarker(lat,lng){
   if(myLocMarker){try{myLocMarker.setMap(null);}catch(e){} myLocMarker=null;}
